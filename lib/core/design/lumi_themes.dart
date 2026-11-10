@@ -264,7 +264,7 @@ abstract final class LumiThemes {
         baseTextTheme.displayLarge,
         fontSize: 34,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
+        letterSpacing: -0.8,
         height: 1.12,
         color: ext.ink,
       ),
