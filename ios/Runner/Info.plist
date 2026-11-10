@@ -26,6 +26,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Lumi uses the camera to capture photos directly into your notes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Lumi accesses your photo library so you can attach images to your notes.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Lumi saves exported images and snapshots when requested.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Lumi records voice notes directly inside your notes.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Lumi uses Face ID to unlock your private notes when enabled in Settings.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
