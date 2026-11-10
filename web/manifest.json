@@ -1,0 +1,35 @@
+{
+    "name": "Lumi",
+    "short_name": "Lumi",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0A0F1F",
+    "theme_color": "#FF8A5B",
+    "description": "Lumi — a calm, Liquid Glass notes, checklists, reminders, and planning app.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
