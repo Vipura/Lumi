@@ -70,9 +70,11 @@ lib/
 ## Setup & Running
 
 ### 1. Prerequisites
-- Install the [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>= 3.47.0`, Dart `>= 3.13.0`).
-- For **Android** builds: Android Studio / Android SDK (`compileSdk` / target API 35+, `minSdk 24`) & JDK 17+.
-- For **iOS / macOS** builds: Xcode + CocoaPods on macOS (`ios/` includes `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSMicrophoneUsageDescription`, `NSFaceIDUsageDescription`, and notification delegate setup).
+- **Install the [Flutter SDK](https://docs.flutter.dev/get-started/install)** (`>= 3.47.0`, Dart `>= 3.13.0`).
+- **Android**: Android SDK (`compileSdk 37`, `minSdk 24`) & JDK 17+.
+- **iOS / macOS**: Xcode + CocoaPods on macOS (`ios/` and `macos/` include privacy descriptions, sandbox entitlements, and notification setup).
+- **Windows**: Visual Studio 2022 with *Desktop development with C++* (plus optional [Inno Setup](https://jrsoftware.org/isinfo.php) for `.exe` installer packaging).
+- **Ubuntu / Linux**: `build-essential clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev`.
 
 ### 2. Install dependencies & run codegen
 ```bash
@@ -88,8 +90,10 @@ flutter run
 # Web preview (Chrome)
 flutter run -d chrome
 
-# Desktop (enable with flutter config if needed)
+# Desktop (enable desired desktop target via flutter config if needed)
 flutter run -d macos
+flutter run -d windows
+flutter run -d linux
 ```
 
 ### 4. Format, Analyze & Test
@@ -97,6 +101,25 @@ flutter run -d macos
 dart format lib test
 flutter analyze
 flutter test
+```
+
+---
+
+## Releases & CI/CD
+
+Lumi uses GitHub Actions on `main` + version tags (`v*`):
+
+- **Continuous Integration ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml))**: Runs formatting, `flutter analyze`, and `flutter test` on every push or PR targeting `main`.
+- **Cross-Platform Releases ([`.github/workflows/release.yml`](./.github/workflows/release.yml))**: Pushing a semantic version tag (`v1.0.0`, etc.) verifies checks and builds downloadable installers/bundles in parallel for all supported platforms, attaching them plus `SHA256SUMS.txt` to a GitHub Release:
+  - **Android**: `Lumi-<version>-android-arm64-v8a.apk`, `armeabi-v7a`, `x86_64`, and `universal.apk`
+  - **Windows (x64)**: `Lumi-<version>-windows-x64-setup.exe` (via [Inno Setup](./.github/packaging/windows_installer.iss)) & portable `.zip`
+  - **macOS (Universal)**: `Lumi-<version>-macos-universal.dmg`
+  - **Ubuntu / Linux (x64)**: `Lumi-<version>-linux-x64.tar.gz`
+
+### Cutting a Release
+```bash
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 See [DECISIONS.md](./DECISIONS.md) for architecture notes and environment/toolchain details.

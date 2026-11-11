@@ -1,0 +1,399 @@
+name: Release Cross-Platform Builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+      publish_release:
+        description: 'Publish GitHub Release (uncheck for dry-run artifacts only)'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      numeric_version: ${{ steps.meta.outputs.numeric_version }}
+      build_number: ${{ steps.meta.outputs.build_number }}
+      publish_release: ${{ steps.meta.outputs.publish_release }}
+    steps:
+      - name: Compute version metadata
+        id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+            PUBLISH="${{ github.event.inputs.publish_release }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            PUBLISH="true"
+          fi
+          VERSION="${TAG#v}"
+          NUMERIC=$(printf '%s' "$VERSION" | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+' || true)
+          if [ -z "$NUMERIC" ]; then
+            NUMERIC="1.0.0"
+          fi
+          BUILD_NUM="${GITHUB_RUN_NUMBER}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "numeric_version=${NUMERIC}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${BUILD_NUM}" >> "$GITHUB_OUTPUT"
+          echo "publish_release=${PUBLISH}" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Format, Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+  build_android:
+    name: Build Android (.apk)
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Ensure Android SDK 37 & build-tools
+        shell: bash
+        run: |
+          SDK_MANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDK_MANAGER" ]; then
+            SDK_MANAGER="$(command -v sdkmanager)"
+          fi
+          yes | "$SDK_MANAGER" --licenses >/dev/null || true
+          "$SDK_MANAGER" \
+            "platforms;android-37.0" \
+            "build-tools;37.0.0" \
+            "platform-tools"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ] && [ -d "$ANDROID_HOME/platforms/android-37.0" ]; then
+            ln -sfn android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android split-per-ABI APKs
+        run: |
+          flutter build apk --release --split-per-abi \
+            --build-name="${{ needs.prepare.outputs.numeric_version }}" \
+            --build-number="${{ needs.prepare.outputs.build_number }}"
+
+      - name: Build Android universal APK
+        run: |
+          flutter build apk --release \
+            --build-name="${{ needs.prepare.outputs.numeric_version }}" \
+            --build-number="${{ needs.prepare.outputs.build_number }}"
+
+      - name: Collect Android artifacts
+        shell: bash
+        run: |
+          VER="${{ needs.prepare.outputs.version }}"
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "dist/Lumi-${VER}-android-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "dist/Lumi-${VER}-android-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk "dist/Lumi-${VER}-android-x86_64.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/Lumi-${VER}-android-universal.apk"
+          ls -lh dist
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-android
+          path: dist/*.apk
+          if-no-files-found: error
+
+  build_linux:
+    name: Build Ubuntu Linux (.tar.gz)
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Build Linux release bundle
+        run: |
+          flutter config --enable-linux-desktop
+          flutter pub get
+          flutter build linux --release \
+            --build-name="${{ needs.prepare.outputs.numeric_version }}" \
+            --build-number="${{ needs.prepare.outputs.build_number }}"
+
+      - name: Package Linux tarball (.tar.gz)
+        shell: bash
+        run: |
+          VER="${{ needs.prepare.outputs.version }}"
+          BUNDLE_DIR="$(find build/linux -type d -path '*/release/bundle' | head -n 1)"
+          if [ -z "$BUNDLE_DIR" ] || [ ! -d "$BUNDLE_DIR" ]; then
+            echo "Linux release bundle not found under build/linux"
+            exit 1
+          fi
+          STAGE_NAME="Lumi-${VER}-linux-x64"
+          mkdir -p "dist/${STAGE_NAME}"
+          cp -R "${BUNDLE_DIR}/." "dist/${STAGE_NAME}/"
+          cp macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png "dist/${STAGE_NAME}/lumi.png"
+          cat > "dist/${STAGE_NAME}/lumi.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Lumi
+          Comment=Offline-first Liquid Glass notes, checklists, and planning app
+          Exec=lumi
+          Icon=lumi
+          Terminal=false
+          Categories=Utility;Office;
+          StartupWMClass=com.lumi.app.lumi
+          EOF
+          tar -C dist -czvf "dist/${STAGE_NAME}.tar.gz" "${STAGE_NAME}"
+          rm -rf "dist/${STAGE_NAME}"
+          ls -lh dist
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-linux
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  build_macos:
+    name: Build macOS (.dmg)
+    needs: [prepare, verify]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Build macOS release app
+        run: |
+          flutter config --enable-macos-desktop
+          flutter pub get
+          flutter build macos --release \
+            --build-name="${{ needs.prepare.outputs.numeric_version }}" \
+            --build-number="${{ needs.prepare.outputs.build_number }}"
+
+      - name: Package macOS disk image (.dmg)
+        shell: bash
+        run: |
+          VER="${{ needs.prepare.outputs.version }}"
+          APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' | head -n 1)"
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "macOS .app bundle not found under build/macos/Build/Products/Release"
+            exit 1
+          fi
+          STAGE_DIR="$(mktemp -d)/lumi-dmg"
+          mkdir -p "$STAGE_DIR" dist
+          cp -R "$APP_PATH" "$STAGE_DIR/Lumi.app"
+          ln -s /Applications "$STAGE_DIR/Applications"
+          hdiutil create \
+            -volname "Lumi" \
+            -srcfolder "$STAGE_DIR" \
+            -ov \
+            -format UDZO \
+            "dist/Lumi-${VER}-macos-universal.dmg"
+          ls -lh dist
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-macos
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  build_windows:
+    name: Build Windows (.exe & portable .zip)
+    needs: [prepare, verify]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Build Windows release app
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release `
+            --build-name="${{ needs.prepare.outputs.numeric_version }}" `
+            --build-number="${{ needs.prepare.outputs.build_number }}"
+
+      - name: Package Windows installer (.exe) and portable (.zip)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ver = "${{ needs.prepare.outputs.version }}"
+          $numVer = "${{ needs.prepare.outputs.numeric_version }}.${{ needs.prepare.outputs.build_number }}"
+          $bundleDir = (Get-ChildItem -Path build\windows -Directory -Recurse | Where-Object { $_.FullName -match 'runner\\Release$' } | Select-Object -First 1).FullName
+          if (-not $bundleDir) {
+            throw "Windows release bundle not found under build\windows"
+          }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+          # Portable zip
+          $portableStage = Join-Path $env:RUNNER_TEMP "Lumi-${ver}-windows-x64"
+          if (Test-Path $portableStage) { Remove-Item -Recurse -Force $portableStage }
+          Copy-Item -Path $bundleDir -Destination $portableStage -Recurse
+          Compress-Archive -Path $portableStage -DestinationPath "dist\Lumi-${ver}-windows-x64-portable.zip" -Force
+
+          # Setup installer (.exe) via Inno Setup
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          if (-not $iscc) {
+            $defaultIscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            if (Test-Path $defaultIscc) {
+              $iscc = $defaultIscc
+            }
+          }
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $defaultIscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            if (Test-Path $defaultIscc) {
+              $iscc = $defaultIscc
+            } else {
+              $iscc = (Get-Command ISCC.exe).Source
+            }
+          }
+
+          & $iscc `
+            "/DAppVersion=$ver" `
+            "/DNumericVersion=$numVer" `
+            "/DBuildDir=$(Resolve-Path $bundleDir)" `
+            "/DOutputDir=$(Resolve-Path dist)" `
+            ".github\packaging\windows_installer.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "ISCC.exe exited with code $LASTEXITCODE"
+          }
+          Get-ChildItem dist
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [prepare, build_android, build_linux, build_macos, build_windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload combined build artifacts
+        if: needs.prepare.outputs.publish_release != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-${{ needs.prepare.outputs.version }}-all-platforms
+          path: release-assets/*
+
+      - name: Create GitHub Release
+        if: needs.prepare.outputs.publish_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Lumi ${{ needs.prepare.outputs.tag }}
+          draft: false
+          prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
+          body: |
+            ## Lumi ${{ needs.prepare.outputs.tag }}
+
+            Offline-first **Liquid Glass** notes, checklists, reminders, attachments, sticky notes, and daily planning across Android, macOS, Windows, and Ubuntu/Linux.
+
+            ### Downloads
+            - **Android**: Download `Lumi-${{ needs.prepare.outputs.version }}-android-arm64-v8a.apk` (recommended for modern phones) or `Lumi-${{ needs.prepare.outputs.version }}-android-universal.apk`.
+            - **Windows (x64)**: Run `Lumi-${{ needs.prepare.outputs.version }}-windows-x64-setup.exe` for the installer, or extract `Lumi-${{ needs.prepare.outputs.version }}-windows-x64-portable.zip`.
+            - **macOS (Apple Silicon & Intel)**: Open `Lumi-${{ needs.prepare.outputs.version }}-macos-universal.dmg` and drag **Lumi** into **Applications** (unsigned build: right-click → *Open* on first launch).
+            - **Ubuntu / Linux (x64)**: Extract `Lumi-${{ needs.prepare.outputs.version }}-linux-x64.tar.gz` and run `./lumi`.
+
+            Verify file integrity against `SHA256SUMS.txt`.
+          files: release-assets/*
+
