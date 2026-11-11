@@ -69,8 +69,34 @@ lib/
 
 ## Setup & Running
 
+### 1. Prerequisites
+- Install the [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>= 3.47.0`, Dart `>= 3.13.0`).
+- For **Android** builds: Android Studio / Android SDK (`compileSdk` / target API 35+, `minSdk 24`) & JDK 17+.
+- For **iOS / macOS** builds: Xcode + CocoaPods on macOS (`ios/` includes `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSMicrophoneUsageDescription`, `NSFaceIDUsageDescription`, and notification delegate setup).
+
+### 2. Install dependencies & run codegen
 ```bash
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
-flutter run
 ```
+
+### 3. Run the app
+```bash
+# Android / iOS emulator or connected device
+flutter run
+
+# Web preview (Chrome)
+flutter run -d chrome
+
+# Desktop (enable with flutter config if needed)
+flutter run -d macos
+```
+
+### 4. Format, Analyze & Test
+```bash
+dart format lib test
+flutter analyze
+flutter test
+```
+
+See [DECISIONS.md](./DECISIONS.md) for architecture notes and environment/toolchain details.
