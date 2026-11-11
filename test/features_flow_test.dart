@@ -76,4 +76,75 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     },
   );
+
+  testWidgets(
+    'Sticky Wall adds and persists sticky note and Settings toggles persist',
+    (tester) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+
+      final (db, prefs) = await createHarness();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            databaseProvider.overrideWith((ref) {
+              ref.onDispose(db.close);
+              return db;
+            }),
+          ],
+          child: const LumiApp(useGoogleFonts: false),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Wall and add a sticky note via the empty state CTA.
+      await tester.tap(find.text('Wall'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(LumiGlassButton, 'Add Sticky'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit Sticky'), findsOneWidget);
+      final bodyField = find.widgetWithText(
+        TextField,
+        'Write a quick thought...',
+      );
+      await tester.enterText(bodyField, 'Sync design tokens');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sync design tokens'), findsOneWidget);
+
+      // Return to Today -> open Settings and toggle Reduce transparency.
+      await tester.tap(find.text('Today'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Ocean'));
+      await tester.tap(find.text('Ocean'));
+      await tester.ensureVisible(find.text('Reduce transparency'));
+      await tester.tap(find.text('Reduce transparency'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LumiDesignScope), findsWidgets);
+      expect(prefs.getBool('lumi.reduceTransparency'), isTrue);
+      expect(
+        prefs.getString('lumi.backgroundTheme'),
+        LumiBackgroundTheme.ocean.name,
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 50));
+    },
+  );
 }
