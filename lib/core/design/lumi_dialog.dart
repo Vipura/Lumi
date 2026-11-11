@@ -98,7 +98,8 @@ Future<bool> showLumiConfirmDialog({
   return result ?? false;
 }
 
-/// Convenience single-field prompt dialog.
+/// Convenience single-field prompt dialog whose [TextEditingController] lifecycle
+/// is scoped to the dialog state so exit transitions never hit a disposed controller.
 Future<String?> showLumiTextPromptDialog({
   required BuildContext context,
   required String title,
