@@ -313,21 +313,24 @@ jobs:
           Compress-Archive -Path $portableStage -DestinationPath "dist\Lumi-${ver}-windows-x64-portable.zip" -Force
 
           # Setup installer (.exe) via Inno Setup
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+            "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"
+          )
           $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
           if (-not $iscc) {
-            $defaultIscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-            if (Test-Path $defaultIscc) {
-              $iscc = $defaultIscc
-            }
+            $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           }
           if (-not $iscc) {
             choco install innosetup -y --no-progress
-            $defaultIscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-            if (Test-Path $defaultIscc) {
-              $iscc = $defaultIscc
-            } else {
-              $iscc = (Get-Command ISCC.exe).Source
+            $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+            if (-not $iscc) {
+              $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
             }
+          }
+          if (-not $iscc) {
+            throw "ISCC.exe not found after Inno Setup installation"
           }
 
           & $iscc `
