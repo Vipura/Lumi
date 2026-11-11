@@ -669,7 +669,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                     child: QuillSimpleToolbar(
                       controller: _quillController!,
                       config: const QuillSimpleToolbarConfig(
-                        multiRowsDisplay: true,
+                        multiRowsDisplay: false,
                         decoration: BoxDecoration(color: Colors.transparent),
                         showFontFamily: false,
                         showFontSize: false,
