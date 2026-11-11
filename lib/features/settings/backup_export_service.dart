@@ -39,7 +39,7 @@ class LumiBackupExportService {
     }
 
     final bytes = Uint8List.fromList(utf8.encode(buf.toString()));
-    final safeName = _sanitizeFileName(item.title, fallback: 'note');
+    final safeName = _sanitizeFileName(item.title, fallback: 'lumi_note');
     await _shareBytes(
       bytes: bytes,
       fileName: '$safeName.md',
@@ -101,7 +101,7 @@ class LumiBackupExportService {
     );
 
     final pdfBytes = await doc.save();
-    final safeName = _sanitizeFileName(item.title, fallback: 'note');
+    final safeName = _sanitizeFileName(item.title, fallback: 'lumi_note');
     await _shareBytes(
       bytes: pdfBytes,
       fileName: '$safeName.pdf',
