@@ -34,8 +34,9 @@ class LumiEmptyState extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 360),
         child: LumiGlass.card(
           padding: const EdgeInsets.all(LumiSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: 68,
@@ -77,7 +78,8 @@ class LumiEmptyState extends StatelessWidget {
                     onPressed: onAction,
                   ),
                 ],
-            ],
+              ],
+            ),
           ),
         ),
       ),
