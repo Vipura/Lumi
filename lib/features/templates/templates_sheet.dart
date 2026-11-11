@@ -36,7 +36,7 @@ class LumiTemplate {
 const lumiBuiltInTemplates = <LumiTemplate>[
   LumiTemplate(
     id: 'daily_plan',
-    name: 'Daily Plan',
+    name: 'Daily plan',
     subtitle: 'Top priorities, schedule blocks, and gratitude',
     icon: Icons.wb_sunny_rounded,
     color: Color(0xFFFF8A5B),
