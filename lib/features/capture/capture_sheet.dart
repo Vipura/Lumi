@@ -17,7 +17,7 @@ import '../templates/templates_sheet.dart';
 Future<void> showLumiCaptureSheet(BuildContext context, WidgetRef ref) {
   return showLumiGlassBottomSheet<void>(
     context: context,
-    title: 'Quick Capture',
+    title: 'Capture anything',
     builder: (sheetCtx) => _CaptureSheetBody(parentContext: context),
   );
 }
