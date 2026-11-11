@@ -15,7 +15,7 @@ class NoteSummaryCard extends StatelessWidget {
     this.onTogglePin,
     this.compact = false,
     this.enableHero = true,
-    this.heroPrefix = 'item',
+    this.heroPrefix = 'notes',
   });
 
   final LumiItemSummary summary;
