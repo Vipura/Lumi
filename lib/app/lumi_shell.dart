@@ -58,7 +58,7 @@ class LumiShell extends ConsumerWidget {
                     LumiSpacing.md,
                     0,
                     LumiSpacing.md,
-                    LumiSpacing.xs,
+                    LumiSpacing.sm,
                   ),
                   child: _MobileFloatingGlassBar(
                     currentIndex: currentIndex,
