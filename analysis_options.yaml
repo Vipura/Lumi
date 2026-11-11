@@ -9,6 +9,7 @@ analyzer:
     - windows/**
     - macos/**
     - "**/*.g.dart"
+    - linux/**
   errors:
     invalid_annotation_target: ignore
 
