@@ -537,7 +537,7 @@ class _EditStickyDialogState extends State<_EditStickyDialog> {
           borderRadius: LumiRadius.lg,
           blur: 28,
           elevated: true,
-          padding: const EdgeInsets.all(LumiSpacing.md),
+          padding: const EdgeInsets.all(LumiSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
