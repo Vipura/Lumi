@@ -20,7 +20,7 @@ class PlannerScreen extends ConsumerStatefulWidget {
 
 class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   _PlannerTab _tab = _PlannerTab.calendar;
-  bool _weekMode = true;
+  bool _weekMode = false;
   DateTime _focusedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime _selectedDay = DateTime(
     DateTime.now().year,
