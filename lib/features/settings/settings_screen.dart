@@ -298,7 +298,7 @@ class SettingsScreen extends ConsumerWidget {
                             leading: const LumiLogo(size: 28),
                             title: const Text('Lumi Design Gallery'),
                             subtitle: const Text(
-                              'Preview themes and Liquid Glass tokens',
+                              'Inspect glass surfaces, themes, and tokens',
                             ),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () => context.push('/design-gallery'),
