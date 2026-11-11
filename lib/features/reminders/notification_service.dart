@@ -28,7 +28,10 @@ class LumiNotificationService {
     if (_initialized) return;
     await _ensureTimezone();
 
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      _initialized = true;
+      return;
+    }
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
