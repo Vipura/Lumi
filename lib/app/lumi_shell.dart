@@ -95,12 +95,13 @@ class _MobileFloatingGlassBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: LumiGlass(
-                borderRadius: LumiRadius.xl,
-                blur: 28,
+                borderRadius: LumiRadius.pill,
+                blur: 18,
                 elevated: true,
+                grouped: false,
                 padding: const EdgeInsets.symmetric(
                   horizontal: LumiSpacing.xs,
-                  vertical: 6,
+                  vertical: 5,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -170,50 +171,54 @@ class _DesktopGlassRail extends StatelessWidget {
     return LumiGlass(
       width: 92,
       borderRadius: LumiRadius.xl,
-      blur: 28,
+      blur: 18,
       elevated: true,
+      grouped: false,
       padding: const EdgeInsets.symmetric(
         vertical: LumiSpacing.md,
         horizontal: LumiSpacing.xs,
       ),
-      child: Column(
-        children: [
-          const LumiLogo(size: 36),
-          const SizedBox(height: LumiSpacing.md),
-          LumiCaptureFab(size: 52, onTap: onCapture),
-          const SizedBox(height: LumiSpacing.lg),
-          _TabItem(
-            icon: Icons.wb_sunny_outlined,
-            activeIcon: Icons.wb_sunny_rounded,
-            label: 'Today',
-            selected: currentIndex == 0,
-            onTap: () => onSelect(0),
-          ),
-          const SizedBox(height: LumiSpacing.sm),
-          _TabItem(
-            icon: Icons.notes_outlined,
-            activeIcon: Icons.notes_rounded,
-            label: 'Notes',
-            selected: currentIndex == 1,
-            onTap: () => onSelect(1),
-          ),
-          const SizedBox(height: LumiSpacing.sm),
-          _TabItem(
-            icon: Icons.calendar_today_outlined,
-            activeIcon: Icons.calendar_today_rounded,
-            label: 'Plan',
-            selected: currentIndex == 2,
-            onTap: () => onSelect(2),
-          ),
-          const SizedBox(height: LumiSpacing.sm),
-          _TabItem(
-            icon: Icons.sticky_note_2_outlined,
-            activeIcon: Icons.sticky_note_2_rounded,
-            label: 'Wall',
-            selected: currentIndex == 3,
-            onTap: () => onSelect(3),
-          ),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const LumiLogo(size: 36),
+            const SizedBox(height: LumiSpacing.md),
+            LumiCaptureFab(size: 52, onTap: onCapture),
+            const SizedBox(height: LumiSpacing.lg),
+            _TabItem(
+              icon: Icons.wb_sunny_outlined,
+              activeIcon: Icons.wb_sunny_rounded,
+              label: 'Today',
+              selected: currentIndex == 0,
+              onTap: () => onSelect(0),
+            ),
+            const SizedBox(height: LumiSpacing.sm),
+            _TabItem(
+              icon: Icons.notes_outlined,
+              activeIcon: Icons.notes_rounded,
+              label: 'Notes',
+              selected: currentIndex == 1,
+              onTap: () => onSelect(1),
+            ),
+            const SizedBox(height: LumiSpacing.sm),
+            _TabItem(
+              icon: Icons.calendar_today_outlined,
+              activeIcon: Icons.calendar_today_rounded,
+              label: 'Plan',
+              selected: currentIndex == 2,
+              onTap: () => onSelect(2),
+            ),
+            const SizedBox(height: LumiSpacing.sm),
+            _TabItem(
+              icon: Icons.sticky_note_2_outlined,
+              activeIcon: Icons.sticky_note_2_rounded,
+              label: 'Wall',
+              selected: currentIndex == 3,
+              onTap: () => onSelect(3),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -237,17 +242,40 @@ class _TabItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = context.lumiTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scope = LumiDesignScope.maybeOf(context);
+    final reduceMotion = LumiMotion.shouldReduceMotion(
+      context,
+      setting: scope?.reduceMotion ?? ext.reduceMotion,
+    );
     final color = selected ? ext.accentColor : ext.inkMuted;
+    final lensFill = selected
+        ? Color.lerp(
+            ext.accentColor,
+            Colors.white,
+            isDark ? 0.12 : 0.28,
+          )!.withValues(alpha: isDark ? 0.20 : 0.28)
+        : Colors.transparent;
+    final lensBorder = selected
+        ? Colors.white.withValues(alpha: isDark ? 0.26 : 0.72)
+        : Colors.transparent;
 
     return Semantics(
       label: label,
       selected: selected,
       button: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(LumiRadius.md),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: AnimatedContainer(
+          duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+          curve: LumiMotion.spring,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: lensFill,
+            borderRadius: BorderRadius.circular(LumiRadius.pill),
+            border: selected ? Border.all(color: lensBorder, width: 0.9) : null,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

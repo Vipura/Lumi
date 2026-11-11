@@ -98,6 +98,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                   const SizedBox(width: LumiSpacing.sm),
                   LumiGlass(
                     borderRadius: LumiRadius.pill,
+                    blur: 16,
                     padding: const EdgeInsets.all(4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -192,6 +193,7 @@ class _CalendarView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = context.lumiTheme;
+    final now = DateTime.now();
     final firstOfMonth = DateTime(focusedMonth.year, focusedMonth.month, 1);
     final daysInMonth = DateTime(
       focusedMonth.year,
@@ -311,7 +313,7 @@ class _CalendarView extends StatelessWidget {
                           final day = days[index];
                           if (day == null) return const SizedBox.shrink();
                           final selected = _sameDay(day, selectedDay);
-                          final isToday = _sameDay(day, DateTime.now());
+                          final isToday = _sameDay(day, now);
                           final hasEvents = eventDays.contains(
                             '${day.year}-${day.month}-${day.day}',
                           );
@@ -535,7 +537,9 @@ class _BoardsView extends StatelessWidget {
                                   child: SizedBox(
                                     width: 240,
                                     child: LumiGlass(
+                                      blur: 16,
                                       elevated: true,
+                                      grouped: false,
                                       padding: const EdgeInsets.all(
                                         LumiSpacing.sm,
                                       ),

@@ -392,9 +392,11 @@ jobs:
             Offline-first **Liquid Glass** notes, checklists, reminders, attachments, sticky notes, and daily planning across Android, macOS, Windows, and Ubuntu/Linux.
 
             ### Downloads
-            - **Android**: Download `Lumi-${{ needs.prepare.outputs.version }}-android-arm64-v8a.apk` (recommended for modern phones) or `Lumi-${{ needs.prepare.outputs.version }}-android-universal.apk`.
+            - **Android**:
+              - `Lumi-${{ needs.prepare.outputs.version }}-android-arm64-v8a.apk` — **recommended** smaller build for modern 64-bit phones.
+              - `Lumi-${{ needs.prepare.outputs.version }}-android-universal.apk` — larger all-in-one build bundling `arm64-v8a`, `armeabi-v7a`, and `x86_64` ABIs for older/32-bit/unknown devices or universal sideloading.
             - **Windows (x64)**: Run `Lumi-${{ needs.prepare.outputs.version }}-windows-x64-setup.exe` for the installer, or extract `Lumi-${{ needs.prepare.outputs.version }}-windows-x64-portable.zip`.
-            - **macOS (Apple Silicon & Intel)**: Open `Lumi-${{ needs.prepare.outputs.version }}-macos-universal.dmg` and drag **Lumi** into **Applications** (unsigned build: right-click → *Open* on first launch).
+            - **macOS (Universal — Apple Silicon & Intel)**: Open `Lumi-${{ needs.prepare.outputs.version }}-macos-universal.dmg` (one universal binary supporting both M1–M4 Macs and Intel Macs) and drag **Lumi** into **Applications** (unsigned build: right-click → *Open* on first launch).
             - **Ubuntu / Linux (x64)**: Extract `Lumi-${{ needs.prepare.outputs.version }}-linux-x64.tar.gz` and run `./lumi`.
 
             Verify file integrity against `SHA256SUMS.txt`.

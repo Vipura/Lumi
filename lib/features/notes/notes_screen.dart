@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -127,10 +126,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     final collections = ref.watch(collectionsStreamProvider).value ?? const [];
     final tags = ref.watch(tagsStreamProvider).value ?? const [];
     final ext = context.lumiTheme;
-    final reduceMotion = LumiMotion.shouldReduceMotion(
-      context,
-      setting: settings.reduceMotion,
-    );
 
     final filtered = summaries.where((s) {
       if (_selectedCollectionId != null &&
@@ -172,50 +167,95 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                           ),
                         ),
                         const SizedBox(width: LumiSpacing.xs),
-                        LumiGlassIconButton(
-                          icon: settings.notesGridView
-                              ? Icons.view_agenda_outlined
-                              : Icons.grid_view_rounded,
-                          size: 40,
-                          tooltip: settings.notesGridView
-                              ? 'Switch to list'
-                              : 'Switch to grid',
-                          onTap: () => ref
-                              .read(settingsControllerProvider.notifier)
-                              .update(
-                                (s) =>
-                                    s.copyWith(notesGridView: !s.notesGridView),
+                        LumiGlass(
+                          borderRadius: LumiRadius.pill,
+                          blur: 16,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 3,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              LumiGlassIconButton(
+                                icon: settings.notesGridView
+                                    ? Icons.view_agenda_outlined
+                                    : Icons.grid_view_rounded,
+                                size: 36,
+                                iconSize: 19,
+                                useBlur: false,
+                                chrome: false,
+                                tooltip: settings.notesGridView
+                                    ? 'Switch to list'
+                                    : 'Switch to grid',
+                                onTap: () => ref
+                                    .read(settingsControllerProvider.notifier)
+                                    .update(
+                                      (s) => s.copyWith(
+                                        notesGridView: !s.notesGridView,
+                                      ),
+                                    ),
                               ),
-                        ),
-                        const SizedBox(width: LumiSpacing.xs),
-                        LumiGlassIconButton(
-                          icon: Icons.auto_awesome_outlined,
-                          size: 40,
-                          tooltip: 'Templates',
-                          onTap: () async {
-                            final id = await showTemplatesSheet(context, ref);
-                            if (id != null && context.mounted) {
-                              unawaited(context.push('/editor/$id'));
-                            }
-                          },
-                        ),
-                        const SizedBox(width: LumiSpacing.xs),
-                        PopupMenuButton<String>(
-                          icon: Icon(Icons.more_vert_rounded, color: ext.ink),
-                          onSelected: (value) {
-                            if (value == 'archive') context.push('/archive');
-                            if (value == 'trash') context.push('/trash');
-                          },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'archive',
-                              child: Text('Archived notes'),
-                            ),
-                            PopupMenuItem(
-                              value: 'trash',
-                              child: Text('Trash (30-day restore)'),
-                            ),
-                          ],
+                              Container(
+                                width: 1,
+                                height: 18,
+                                color: ext.inkMuted.withValues(alpha: 0.18),
+                              ),
+                              LumiGlassIconButton(
+                                icon: Icons.auto_awesome_outlined,
+                                size: 36,
+                                iconSize: 19,
+                                useBlur: false,
+                                chrome: false,
+                                tooltip: 'Templates',
+                                onTap: () async {
+                                  final id = await showTemplatesSheet(
+                                    context,
+                                    ref,
+                                  );
+                                  if (id != null && context.mounted) {
+                                    unawaited(context.push('/editor/$id'));
+                                  }
+                                },
+                              ),
+                              Container(
+                                width: 1,
+                                height: 18,
+                                color: ext.inkMuted.withValues(alpha: 0.18),
+                              ),
+                              SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: PopupMenuButton<String>(
+                                  padding: EdgeInsets.zero,
+                                  tooltip: 'More options',
+                                  icon: Icon(
+                                    Icons.more_horiz_rounded,
+                                    size: 20,
+                                    color: ext.ink,
+                                  ),
+                                  onSelected: (value) {
+                                    if (value == 'archive') {
+                                      context.push('/archive');
+                                    }
+                                    if (value == 'trash') {
+                                      context.push('/trash');
+                                    }
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'archive',
+                                      child: Text('Archived notes'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'trash',
+                                      child: Text('Trash (30-day restore)'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -336,7 +376,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                       ),
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final s = filtered[index];
-                        final card = NoteSummaryCard(
+                        return NoteSummaryCard(
                           summary: s,
                           compact: true,
                           heroPrefix: 'notes',
@@ -344,15 +384,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                               context.push('/editor/${s.item.id}?hero=notes'),
                           onLongPress: () => _showCardActions(s),
                         );
-                        return reduceMotion
-                            ? card
-                            : card
-                                  .animate()
-                                  .fadeIn(
-                                    duration: 220.ms,
-                                    delay: (index.clamp(0, 8) * 25).ms,
-                                  )
-                                  .slideY(begin: 0.04, end: 0);
                       }, childCount: filtered.length),
                     );
                   },
@@ -372,22 +403,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                       const SizedBox(height: LumiSpacing.sm),
                   itemBuilder: (context, index) {
                     final s = filtered[index];
-                    final card = NoteSummaryCard(
+                    return NoteSummaryCard(
                       summary: s,
                       heroPrefix: 'notes',
                       onTap: () =>
                           context.push('/editor/${s.item.id}?hero=notes'),
                       onLongPress: () => _showCardActions(s),
                     );
-                    return reduceMotion
-                        ? card
-                        : card
-                              .animate()
-                              .fadeIn(
-                                duration: 220.ms,
-                                delay: (index.clamp(0, 8) * 25).ms,
-                              )
-                              .slideY(begin: 0.03, end: 0);
                   },
                 ),
               ),

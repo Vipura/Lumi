@@ -34,6 +34,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   final _titleController = TextEditingController();
   final _editorFocusNode = FocusNode();
   final _editorScrollController = ScrollController();
+  final _wordCountNotifier = ValueNotifier<int>(0);
+  final _savedLabelNotifier = ValueNotifier<String>('Saved');
 
   late final ItemsRepository _itemsRepo;
   QuillController? _quillController;
@@ -43,8 +45,6 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   bool _loaded = false;
   bool _dirty = false;
   bool _showChecklist = false;
-  int _wordCount = 0;
-  String _lastSavedLabel = 'Saved';
   bool _titleEditedManually = false;
 
   @override
@@ -77,7 +77,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       selection: const TextSelection.collapsed(offset: 0),
     );
 
-    _wordCount = DeltaUtils.wordCount(doc.toPlainText());
+    _wordCountNotifier.value = DeltaUtils.wordCount(doc.toPlainText());
     _showChecklist =
         item.type == LumiItemType.checklist.dbValue || entries.isNotEmpty;
 
@@ -112,16 +112,16 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     if (!_loaded || _quillController == null) return;
     final plain = _quillController!.document.toPlainText();
     final nextCount = DeltaUtils.wordCount(plain);
-    if (nextCount != _wordCount && mounted) {
-      setState(() => _wordCount = nextCount);
+    if (nextCount != _wordCountNotifier.value) {
+      _wordCountNotifier.value = nextCount;
     }
     _scheduleAutosave();
   }
 
   void _scheduleAutosave() {
     _dirty = true;
-    if (mounted && _lastSavedLabel != 'Saving...') {
-      setState(() => _lastSavedLabel = 'Saving...');
+    if (_savedLabelNotifier.value != 'Saving...') {
+      _savedLabelNotifier.value = 'Saving...';
     }
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer(const Duration(milliseconds: 450), _flushSave);
@@ -138,7 +138,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
       autoDeriveTitle: true,
     );
     if (mounted) {
-      setState(() => _lastSavedLabel = 'Saved');
+      _savedLabelNotifier.value = 'Saved';
     }
   }
 
@@ -164,6 +164,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     _quillController?.dispose();
     _editorFocusNode.dispose();
     _editorScrollController.dispose();
+    _wordCountNotifier.dispose();
+    _savedLabelNotifier.dispose();
     super.dispose();
   }
 
@@ -596,124 +598,160 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     );
 
     return LumiBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: Padding(
-            padding: const EdgeInsets.only(left: LumiSpacing.xs),
-            child: Center(
-              child: LumiGlassIconButton(
-                icon: Icons.arrow_back_ios_new_rounded,
-                size: 40,
-                iconSize: 18,
-                tooltip: 'Back',
-                onTap: () async {
-                  await _flushSave();
-                  if (context.mounted) context.pop();
-                },
+      child: BackdropGroup(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            leading: Padding(
+              padding: const EdgeInsets.only(left: LumiSpacing.xs),
+              child: Center(
+                child: LumiGlassIconButton(
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  size: 40,
+                  iconSize: 18,
+                  tooltip: 'Back',
+                  onTap: () async {
+                    await _flushSave();
+                    if (context.mounted) context.pop();
+                  },
+                ),
               ),
             ),
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$_wordCount word${_wordCount == 1 ? '' : 's'} • $_lastSavedLabel',
-                style: Theme.of(context).textTheme.bodySmall,
+            title: ValueListenableBuilder<int>(
+              valueListenable: _wordCountNotifier,
+              builder: (context, words, _) {
+                return ValueListenableBuilder<String>(
+                  valueListenable: _savedLabelNotifier,
+                  builder: (context, savedLabel, _) {
+                    return Text(
+                      '$words word${words == 1 ? '' : 's'} • $savedLabel',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    );
+                  },
+                );
+              },
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: LumiSpacing.sm),
+                child: LumiGlass(
+                  borderRadius: LumiRadius.pill,
+                  blur: 16,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LumiGlassIconButton(
+                        icon: item.pinned
+                            ? Icons.push_pin_rounded
+                            : Icons.push_pin_outlined,
+                        size: 36,
+                        iconSize: 19,
+                        useBlur: false,
+                        chrome: false,
+                        tintColor: item.pinned ? ext.accentColor : null,
+                        iconColor: item.pinned ? ext.accentColor : null,
+                        tooltip: item.pinned ? 'Unpin' : 'Pin note',
+                        onTap: () => ref
+                            .read(itemsRepositoryProvider)
+                            .updateMetadata(id: item.id, pinned: !item.pinned),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 18,
+                        color: ext.inkMuted.withValues(alpha: 0.18),
+                      ),
+                      LumiGlassIconButton(
+                        icon: Icons.palette_outlined,
+                        size: 36,
+                        iconSize: 19,
+                        useBlur: false,
+                        chrome: false,
+                        tooltip: 'Organize & color',
+                        onTap: () => _pickColorAndCollection(item, collections),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 18,
+                        color: ext.inkMuted.withValues(alpha: 0.18),
+                      ),
+                      LumiGlassIconButton(
+                        icon: Icons.more_horiz_rounded,
+                        size: 36,
+                        iconSize: 20,
+                        useBlur: false,
+                        chrome: false,
+                        tooltip: 'More options',
+                        onTap: () => _showMoreMenu(item),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          actions: [
-            LumiGlassIconButton(
-              icon: item.pinned
-                  ? Icons.push_pin_rounded
-                  : Icons.push_pin_outlined,
-              size: 40,
-              iconSize: 19,
-              tintColor: item.pinned ? ext.accentColor : null,
-              iconColor: item.pinned ? ext.accentColor : null,
-              tooltip: item.pinned ? 'Unpin' : 'Pin note',
-              onTap: () => ref
-                  .read(itemsRepositoryProvider)
-                  .updateMetadata(id: item.id, pinned: !item.pinned),
-            ),
-            const SizedBox(width: LumiSpacing.xs),
-            LumiGlassIconButton(
-              icon: Icons.palette_outlined,
-              size: 40,
-              iconSize: 19,
-              tooltip: 'Organize & color',
-              onTap: () => _pickColorAndCollection(item, collections),
-            ),
-            const SizedBox(width: LumiSpacing.xs),
-            LumiGlassIconButton(
-              icon: Icons.more_horiz_rounded,
-              size: 40,
-              iconSize: 20,
-              tooltip: 'More options',
-              onTap: () => _showMoreMenu(item),
-            ),
-            const SizedBox(width: LumiSpacing.sm),
-          ],
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 820),
-                  child: widget.heroPrefix != null
-                      ? Hero(
-                          tag: 'lumi_${widget.heroPrefix}_${item.id}',
-                          child: Material(
-                            color: Colors.transparent,
-                            child: canvasBox,
-                          ),
-                        )
-                      : canvasBox,
+          body: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 820),
+                    child: widget.heroPrefix != null
+                        ? Hero(
+                            tag: 'lumi_${widget.heroPrefix}_${item.id}',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: canvasBox,
+                            ),
+                          )
+                        : canvasBox,
+                  ),
                 ),
               ),
-            ),
-            // Floating / keyboard-docked Liquid Glass Quill toolbar
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  LumiSpacing.md,
-                  LumiSpacing.xs,
-                  LumiSpacing.md,
-                  LumiSpacing.xs,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 820),
-                  child: LumiGlass(
-                    borderRadius: LumiRadius.pill,
-                    blur: 24,
-                    elevated: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: LumiSpacing.xs,
-                      vertical: 2,
-                    ),
-                    child: QuillSimpleToolbar(
-                      controller: _quillController!,
-                      config: const QuillSimpleToolbarConfig(
-                        multiRowsDisplay: false,
-                        decoration: BoxDecoration(color: Colors.transparent),
-                        showFontFamily: false,
-                        showFontSize: false,
-                        showColorButton: false,
-                        showBackgroundColorButton: false,
-                        showSearchButton: false,
-                        showSubscript: false,
-                        showSuperscript: false,
-                        showDirection: false,
+              // Floating / keyboard-docked Liquid Glass Quill toolbar
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    LumiSpacing.md,
+                    LumiSpacing.xs,
+                    LumiSpacing.md,
+                    LumiSpacing.xs,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 820),
+                    child: LumiGlass(
+                      borderRadius: LumiRadius.pill,
+                      blur: 16,
+                      elevated: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: LumiSpacing.xs,
+                        vertical: 2,
+                      ),
+                      child: QuillSimpleToolbar(
+                        controller: _quillController!,
+                        config: const QuillSimpleToolbarConfig(
+                          multiRowsDisplay: false,
+                          decoration: BoxDecoration(color: Colors.transparent),
+                          showFontFamily: false,
+                          showFontSize: false,
+                          showColorButton: false,
+                          showBackgroundColorButton: false,
+                          showSearchButton: false,
+                          showSubscript: false,
+                          showSuperscript: false,
+                          showDirection: false,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

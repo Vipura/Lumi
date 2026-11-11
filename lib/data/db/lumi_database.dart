@@ -56,6 +56,10 @@ class LumiDatabase extends _$LumiDatabase {
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      try {
+        await customStatement('PRAGMA journal_mode = WAL');
+        await customStatement('PRAGMA synchronous = NORMAL');
+      } catch (_) {}
       await _probeFts5();
       await _seedDefaultCollections();
     },

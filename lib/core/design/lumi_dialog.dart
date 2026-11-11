@@ -36,8 +36,9 @@ Future<T?> showLumiGlassDialog<T>({
           constraints: const BoxConstraints(maxWidth: 420),
           child: LumiGlass(
             borderRadius: LumiRadius.lg,
-            blur: 28,
+            blur: 20,
             elevated: true,
+            grouped: false,
             tintColor: tintColor,
             padding: const EdgeInsets.all(LumiSpacing.lg),
             child: Column(
@@ -169,8 +170,9 @@ class _LumiTextPromptDialogState extends State<_LumiTextPromptDialog> {
         constraints: const BoxConstraints(maxWidth: 420),
         child: LumiGlass(
           borderRadius: LumiRadius.lg,
-          blur: 28,
+          blur: 20,
           elevated: true,
+          grouped: false,
           padding: const EdgeInsets.all(LumiSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,

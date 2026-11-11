@@ -127,6 +127,56 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
       context,
       setting: scope?.reduceMotion ?? false,
     );
+    final isPill = widget.borderRadius >= 100;
+    final radius = BorderRadius.circular(widget.borderRadius);
+    final shape = isPill
+        ? RoundedRectangleBorder(borderRadius: radius)
+        : RoundedSuperellipseBorder(borderRadius: radius);
+
+    final innerContent = Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(widget.accent, Colors.white, 0.22)!,
+                  widget.accent,
+                  Color.lerp(widget.accent, Colors.black, 0.08)!,
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 22,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.28),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        widget.child,
+      ],
+    );
+
+    final clipped = isPill
+        ? ClipRRect(borderRadius: radius, child: innerContent)
+        : ClipRSuperellipse(borderRadius: radius, child: innerContent);
 
     return RepaintBoundary(
       child: GestureDetector(
@@ -149,31 +199,36 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
           scale: _pressed && !reduceMotion ? 0.97 : 1.0,
           duration: reduceMotion ? Duration.zero : LumiMotion.fast,
           curve: LumiMotion.spring,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(widget.borderRadius),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.lerp(widget.accent, Colors.white, 0.16)!,
-                  widget.accent,
-                ],
-              ),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.42),
-                width: 1,
-              ),
-              boxShadow: [
+          child: Container(
+            decoration: ShapeDecoration(
+              shape: shape,
+              shadows: [
                 BoxShadow(
-                  color: widget.accent.withValues(alpha: 0.42),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                  spreadRadius: -4,
+                  color: widget.accent.withValues(alpha: 0.34),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                  spreadRadius: -3,
                 ),
               ],
             ),
-            child: widget.child,
+            foregroundDecoration: ShapeDecoration(
+              shape: isPill
+                  ? RoundedRectangleBorder(
+                      borderRadius: radius,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.48),
+                        width: 1,
+                      ),
+                    )
+                  : RoundedSuperellipseBorder(
+                      borderRadius: radius,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.48),
+                        width: 1,
+                      ),
+                    ),
+            ),
+            child: clipped,
           ),
         ),
       ),
@@ -181,7 +236,8 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
   }
 }
 
-/// Circular or pill frosted icon button (>= 44x44 tap target).
+/// Circular or pill frosted icon button (>= 44x44 tap target when standalone,
+/// or borderless inside grouped Liquid Glass capsules via `chrome: false`).
 class LumiGlassIconButton extends StatelessWidget {
   const LumiGlassIconButton({
     super.key,
@@ -194,6 +250,8 @@ class LumiGlassIconButton extends StatelessWidget {
     this.iconColor,
     this.badgeCount = 0,
     this.useBlur = true,
+    this.grouped = true,
+    this.chrome = true,
   });
 
   final IconData icon;
@@ -205,48 +263,62 @@ class LumiGlassIconButton extends StatelessWidget {
   final Color? iconColor;
   final int badgeCount;
   final bool useBlur;
+  final bool grouped;
+  final bool chrome;
 
   @override
   Widget build(BuildContext context) {
     final ext = context.lumiTheme;
-    final button = LumiGlass(
-      width: size,
-      height: size,
-      borderRadius: LumiRadius.pill,
-      tintColor: tintColor,
-      useBlur: useBlur,
-      onTap: onTap,
-      semanticLabel: tooltip,
+    final iconStack = Stack(
+      clipBehavior: Clip.none,
       alignment: Alignment.center,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          Icon(icon, size: iconSize, color: iconColor ?? ext.ink),
-          if (badgeCount > 0)
-            Positioned(
-              top: -4,
-              right: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: ext.accentColor,
-                  borderRadius: BorderRadius.circular(LumiRadius.pill),
-                  border: Border.all(color: Colors.white, width: 1.2),
-                ),
-                child: Text(
-                  badgeCount > 9 ? '9+' : '$badgeCount',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+      children: [
+        Icon(icon, size: iconSize, color: iconColor ?? ext.ink),
+        if (badgeCount > 0)
+          Positioned(
+            top: -4,
+            right: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: ext.accentColor,
+                borderRadius: BorderRadius.circular(LumiRadius.pill),
+                border: Border.all(color: Colors.white, width: 1.2),
+              ),
+              child: Text(
+                badgeCount > 9 ? '9+' : '$badgeCount',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
+
+    final Widget button = chrome
+        ? LumiGlass(
+            width: size,
+            height: size,
+            borderRadius: LumiRadius.pill,
+            blur: 16,
+            tintColor: tintColor,
+            useBlur: useBlur,
+            grouped: grouped,
+            onTap: onTap,
+            semanticLabel: tooltip,
+            alignment: Alignment.center,
+            child: iconStack,
+          )
+        : _GroupedCapsuleIconButton(
+            size: size,
+            tintColor: tintColor,
+            tooltip: tooltip,
+            onTap: onTap,
+            child: iconStack,
+          );
 
     if (tooltip != null) {
       return Tooltip(message: tooltip!, child: button);
@@ -255,7 +327,87 @@ class LumiGlassIconButton extends StatelessWidget {
   }
 }
 
-/// Prominent glowing "+" capture orb used in the floating bottom glass bar.
+class _GroupedCapsuleIconButton extends StatefulWidget {
+  const _GroupedCapsuleIconButton({
+    required this.size,
+    required this.tintColor,
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  });
+
+  final double size;
+  final Color? tintColor;
+  final String? tooltip;
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  State<_GroupedCapsuleIconButton> createState() =>
+      _GroupedCapsuleIconButtonState();
+}
+
+class _GroupedCapsuleIconButtonState extends State<_GroupedCapsuleIconButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = LumiDesignScope.maybeOf(context);
+    final reduceMotion = LumiMotion.shouldReduceMotion(
+      context,
+      setting: scope?.reduceMotion ?? false,
+    );
+    final activeTint = widget.tintColor;
+
+    Widget content = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: widget.onTap == null
+          ? null
+          : (_) => setState(() => _pressed = true),
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (scope?.hapticsEnabled ?? true) {
+                HapticFeedback.lightImpact();
+              }
+              widget.onTap?.call();
+            },
+      child: AnimatedScale(
+        scale: _pressed && !reduceMotion ? 0.90 : 1.0,
+        duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+        curve: LumiMotion.spring,
+        child: Container(
+          width: widget.size,
+          height: widget.size,
+          alignment: Alignment.center,
+          decoration: activeTint != null
+              ? BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: activeTint.withValues(alpha: 0.16),
+                )
+              : null,
+          child: widget.child,
+        ),
+      ),
+    );
+
+    if (widget.tooltip != null) {
+      content = Semantics(
+        label: widget.tooltip,
+        button: widget.onTap != null,
+        child: content,
+      );
+    }
+
+    return content;
+  }
+}
+
+/// Prominent Liquid Glass "+" capture orb used in the floating bottom bar.
 class LumiCaptureFab extends StatefulWidget {
   const LumiCaptureFab({
     super.key,
@@ -309,35 +461,71 @@ class _LumiCaptureFabState extends State<LumiCaptureFab> {
                 height: widget.size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color.lerp(ext.accentColor, Colors.white, 0.25)!,
-                      ext.accentColor,
-                    ],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.72),
-                    width: 1.4,
-                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: ext.accentColor.withValues(alpha: 0.55),
-                      blurRadius: 22,
+                      color: ext.accentColor.withValues(alpha: 0.44),
+                      blurRadius: 16,
                       offset: const Offset(0, 6),
-                    ),
-                    BoxShadow(
-                      color: ext.accentGlow.withValues(alpha: 0.35),
-                      blurRadius: 34,
-                      spreadRadius: 2,
+                      spreadRadius: -2,
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 30,
+                child: ClipOval(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color.lerp(ext.accentColor, Colors.white, 0.30)!,
+                              ext.accentColor,
+                              Color.lerp(ext.accentColor, Colors.black, 0.12)!,
+                            ],
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: FractionallySizedBox(
+                          heightFactor: 0.54,
+                          widthFactor: 0.86,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.42),
+                                  Colors.white.withValues(alpha: 0.0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            width: 1.35,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.add_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

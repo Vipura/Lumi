@@ -1,5 +1,4 @@
-import 'dart:math' as math;
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'lumi_tokens.dart';
@@ -20,8 +19,12 @@ enum LumiDayPhase {
   }
 }
 
-/// Low-CPU animated radial-orb gradient background behind all Lumi screens.
-class LumiBackground extends StatefulWidget {
+/// Zero-idle-cost radial-orb ambient canvas behind all Lumi screens.
+///
+/// Renders into an isolated [RepaintBoundary] and only animates briefly when
+/// theme, brightness, or day-phase changes — never invalidating downstream
+/// [BackdropFilter]s at 60/120 fps while scrolling, typing, or idling.
+class LumiBackground extends StatelessWidget {
   const LumiBackground({
     super.key,
     required this.child,
@@ -36,59 +39,11 @@ class LumiBackground extends StatefulWidget {
   final DateTime? now;
 
   @override
-  State<LumiBackground> createState() => _LumiBackgroundState();
-}
-
-class _LumiBackgroundState extends State<LumiBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 26),
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncMotion();
-  }
-
-  @override
-  void didUpdateWidget(covariant LumiBackground oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncMotion();
-  }
-
-  void _syncMotion() {
-    final scope = LumiDesignScope.maybeOf(context);
-    final reduceMotion = LumiMotion.shouldReduceMotion(
-      context,
-      setting: scope?.reduceMotion ?? false,
-    );
-    if (reduceMotion) {
-      if (_controller.isAnimating) _controller.stop();
-    } else if (!_controller.isAnimating) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final scope = LumiDesignScope.maybeOf(context);
     final activeTheme =
-        widget.theme ?? scope?.backgroundTheme ?? LumiBackgroundTheme.aurora;
+        widgetThemeOrScope(theme, scope) ?? LumiBackgroundTheme.aurora;
     final reduceTransparency =
         scope?.reduceTransparency ??
         (MediaQuery.maybeOf(context) != null &&
@@ -97,9 +52,13 @@ class _LumiBackgroundState extends State<LumiBackground>
                 .platformDispatcher
                 .accessibilityFeatures
                 .highContrast);
+    final reduceMotion = LumiMotion.shouldReduceMotion(
+      context,
+      setting: scope?.reduceMotion ?? false,
+    );
 
-    final phase = widget.timeOfDayShift
-        ? LumiDayPhase.fromDateTime(widget.now ?? DateTime.now())
+    final phase = timeOfDayShift
+        ? LumiDayPhase.fromDateTime(now ?? DateTime.now())
         : null;
 
     final palette = _resolveOrbs(activeTheme, brightness, phase);
@@ -123,23 +82,29 @@ class _LumiBackgroundState extends State<LumiBackground>
                       ),
                     ),
                   )
-                : AnimatedBuilder(
-                    animation: _controller,
-                    builder: (context, _) {
-                      return CustomPaint(
-                        painter: _LumiMeshPainter(
-                          progress: _controller.value,
-                          palette: palette,
-                        ),
-                      );
-                    },
+                : AnimatedSwitcher(
+                    duration: reduceMotion ? Duration.zero : LumiMotion.slow,
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: CustomPaint(
+                      key: ValueKey(palette),
+                      isComplex: true,
+                      willChange: false,
+                      painter: _LumiMeshPainter(palette: palette),
+                      child: const SizedBox.expand(),
+                    ),
                   ),
           ),
         ),
-        widget.child,
+        child,
       ],
     );
   }
+
+  static LumiBackgroundTheme? widgetThemeOrScope(
+    LumiBackgroundTheme? widgetTheme,
+    LumiDesignScope? scope,
+  ) => widgetTheme ?? scope?.backgroundTheme;
 
   _BackgroundPalette _resolveOrbs(
     LumiBackgroundTheme theme,
@@ -247,11 +212,12 @@ class _LumiBackgroundState extends State<LumiBackground>
     return _BackgroundPalette(
       base: base,
       orbs: orbs,
-      orbOpacity: isDark ? 0.34 : 0.44,
+      orbOpacity: isDark ? 0.40 : 0.48,
     );
   }
 }
 
+@immutable
 class _BackgroundPalette {
   const _BackgroundPalette({
     required this.base,
@@ -262,48 +228,46 @@ class _BackgroundPalette {
   final Color base;
   final List<Color> orbs;
   final double orbOpacity;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is _BackgroundPalette &&
+            other.base == base &&
+            other.orbOpacity == orbOpacity &&
+            listEquals(other.orbs, orbs));
+  }
+
+  @override
+  int get hashCode => Object.hash(base, orbOpacity, Object.hashAll(orbs));
 }
 
 class _LumiMeshPainter extends CustomPainter {
-  const _LumiMeshPainter({required this.progress, required this.palette});
+  const _LumiMeshPainter({required this.palette});
 
-  final double progress;
   final _BackgroundPalette palette;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final angle = progress * math.pi * 2;
     final specs = [
       (
-        center: Offset(
-          size.width * (0.20 + 0.12 * math.sin(angle)),
-          size.height * (0.18 + 0.08 * math.cos(angle)),
-        ),
+        center: Offset(size.width * 0.20, size.height * 0.18),
         radius: size.longestSide * 0.56,
         color: palette.orbs[0],
       ),
       (
-        center: Offset(
-          size.width * (0.82 + 0.10 * math.cos(angle * 0.9)),
-          size.height * (0.28 + 0.12 * math.sin(angle * 1.1)),
-        ),
+        center: Offset(size.width * 0.84, size.height * 0.26),
         radius: size.longestSide * 0.52,
         color: palette.orbs[1],
       ),
       (
-        center: Offset(
-          size.width * (0.30 + 0.14 * math.cos(angle + 1.4)),
-          size.height * (0.78 + 0.10 * math.sin(angle + 0.7)),
-        ),
+        center: Offset(size.width * 0.26, size.height * 0.80),
         radius: size.longestSide * 0.58,
         color: palette.orbs[2],
       ),
       (
-        center: Offset(
-          size.width * (0.78 + 0.08 * math.sin(angle + 2.2)),
-          size.height * (0.82 + 0.09 * math.cos(angle + 2.2)),
-        ),
-        radius: size.longestSide * 0.46,
+        center: Offset(size.width * 0.80, size.height * 0.84),
+        radius: size.longestSide * 0.48,
         color: palette.orbs[3],
       ),
     ];
@@ -313,10 +277,10 @@ class _LumiMeshPainter extends CustomPainter {
         ..shader = RadialGradient(
           colors: [
             orb.color.withValues(alpha: palette.orbOpacity),
-            orb.color.withValues(alpha: palette.orbOpacity * 0.35),
+            orb.color.withValues(alpha: palette.orbOpacity * 0.36),
             orb.color.withValues(alpha: 0.0),
           ],
-          stops: const [0.0, 0.5, 1.0],
+          stops: const [0.0, 0.48, 1.0],
         ).createShader(Rect.fromCircle(center: orb.center, radius: orb.radius));
       canvas.drawCircle(orb.center, orb.radius, paint);
     }
@@ -324,6 +288,6 @@ class _LumiMeshPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LumiMeshPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.palette != palette;
+    return oldDelegate.palette != palette;
   }
 }

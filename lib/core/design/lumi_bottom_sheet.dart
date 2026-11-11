@@ -62,8 +62,9 @@ class LumiGlassSheetContainer extends StatelessWidget {
     final ext = context.lumiTheme;
     return LumiGlass(
       borderRadius: LumiRadius.xl,
-      blur: 28,
+      blur: 20,
       elevated: true,
+      grouped: false,
       tintColor: tintColor,
       padding: padding,
       child: Column(

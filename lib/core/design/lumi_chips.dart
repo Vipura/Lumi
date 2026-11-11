@@ -37,6 +37,7 @@ class LumiGlassChip extends StatelessWidget {
       onTap: onTap,
       useBlur: useBlur,
       elevated: selected,
+      hasShadow: false,
       tintColor: activeTint,
       borderRadius: LumiRadius.pill,
       padding: const EdgeInsets.symmetric(

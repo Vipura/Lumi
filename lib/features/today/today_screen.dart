@@ -190,16 +190,41 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                             ],
                           ),
                         ),
-                        LumiGlassIconButton(
-                          icon: Icons.search_rounded,
-                          tooltip: 'Search',
-                          onTap: () => context.push('/search'),
-                        ),
-                        const SizedBox(width: LumiSpacing.xs),
-                        LumiGlassIconButton(
-                          icon: Icons.settings_outlined,
-                          tooltip: 'Settings',
-                          onTap: () => context.push('/settings'),
+                        LumiGlass(
+                          borderRadius: LumiRadius.pill,
+                          blur: 16,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 3,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              LumiGlassIconButton(
+                                icon: Icons.search_rounded,
+                                size: 38,
+                                iconSize: 19,
+                                useBlur: false,
+                                chrome: false,
+                                tooltip: 'Search',
+                                onTap: () => context.push('/search'),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 18,
+                                color: ext.inkMuted.withValues(alpha: 0.18),
+                              ),
+                              LumiGlassIconButton(
+                                icon: Icons.settings_outlined,
+                                size: 38,
+                                iconSize: 19,
+                                useBlur: false,
+                                chrome: false,
+                                tooltip: 'Settings',
+                                onTap: () => context.push('/settings'),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -208,7 +233,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                     // Instant Quick-Capture Bar (< 2 seconds)
                     LumiGlass(
                       borderRadius: LumiRadius.lg,
-                      blur: 24,
+                      blur: 16,
                       elevated: true,
                       padding: const EdgeInsets.symmetric(
                         horizontal: LumiSpacing.md,
@@ -324,6 +349,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                     if (showEveningRollover) ...[
                       const SizedBox(height: LumiSpacing.sm),
                       LumiGlass(
+                        blur: 16,
                         tintColor: ext.accentColor,
                         padding: const EdgeInsets.all(LumiSpacing.md),
                         child: Row(

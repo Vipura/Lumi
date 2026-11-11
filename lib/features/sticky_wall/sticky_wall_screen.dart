@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -89,6 +91,10 @@ class _StickyWallScreenState extends ConsumerState<StickyWallScreen> {
   Widget build(BuildContext context) {
     final stickies = ref.watch(stickyItemsStreamProvider).value ?? const [];
     final ext = context.lumiTheme;
+    final maxZ = stickies.fold<int>(
+      1,
+      (acc, e) => (e.stickyZ ?? 0) > acc ? (e.stickyZ ?? 0) : acc,
+    );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -143,27 +149,25 @@ class _StickyWallScreenState extends ConsumerState<StickyWallScreen> {
                     child: SizedBox(
                       width: _canvasSize,
                       height: _canvasSize,
-                      child: CustomPaint(
-                        painter: _DotGridPainter(
-                          dotColor: ext.inkMuted.withValues(alpha: 0.16),
-                        ),
-                        child: Stack(
-                          children: stickies.map((sticky) {
-                            final maxZ = stickies.fold<int>(
-                              1,
-                              (acc, e) => (e.stickyZ ?? 0) > acc
-                                  ? (e.stickyZ ?? 0)
-                                  : acc,
-                            );
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: RepaintBoundary(
+                              child: CustomPaint(
+                                isComplex: true,
+                                willChange: false,
+                                painter: _DotGridPainter(
+                                  dotColor: ext.inkMuted.withValues(
+                                    alpha: 0.16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          ...stickies.map((sticky) {
                             return _StickyCardWidget(
                               key: ValueKey(sticky.id),
                               sticky: sticky,
-                              onBringToFront: () => ref
-                                  .read(itemsRepositoryProvider)
-                                  .updateMetadata(
-                                    id: sticky.id,
-                                    stickyZ: maxZ + 1,
-                                  ),
                               onMoveEnd: (x, y) => ref
                                   .read(itemsRepositoryProvider)
                                   .updateMetadata(
@@ -204,8 +208,8 @@ class _StickyWallScreenState extends ConsumerState<StickyWallScreen> {
                                   .read(itemsRepositoryProvider)
                                   .softDelete(sticky.id),
                             );
-                          }).toList(),
-                        ),
+                          }),
+                        ],
                       ),
                     ),
                   ),
@@ -234,7 +238,6 @@ class _StickyCardWidget extends StatefulWidget {
   const _StickyCardWidget({
     super.key,
     required this.sticky,
-    required this.onBringToFront,
     required this.onMoveEnd,
     required this.onResizeEnd,
     required this.onEdit,
@@ -244,7 +247,6 @@ class _StickyCardWidget extends StatefulWidget {
   });
 
   final Item sticky;
-  final VoidCallback onBringToFront;
   final void Function(double x, double y) onMoveEnd;
   final void Function(double w, double h) onResizeEnd;
   final VoidCallback onEdit;
@@ -300,157 +302,162 @@ class _StickyCardWidgetState extends State<_StickyCardWidget> {
       top: _y,
       width: _w,
       height: _h,
-      child: GestureDetector(
-        onPanStart: (_) {
-          setState(() => _dragging = true);
-          widget.onBringToFront();
-        },
-        onPanUpdate: (details) {
-          setState(() {
-            _x += details.delta.dx;
-            _y += details.delta.dy;
-          });
-        },
-        onPanEnd: (_) {
-          setState(() => _dragging = false);
-          if (LumiDesignScope.maybeOf(context)?.hapticsEnabled ?? true) {
-            HapticFeedback.lightImpact();
-          }
-          widget.onMoveEnd(_x, _y);
-        },
-        onTap: widget.onEdit,
-        child: AnimatedScale(
-          scale: _dragging && !reduceMotion ? 1.045 : 1.0,
-          duration: reduceMotion ? Duration.zero : LumiMotion.medium,
-          curve: LumiMotion.pop,
-          child: Container(
-            padding: const EdgeInsets.all(LumiSpacing.sm),
-            decoration: BoxDecoration(
-              color: fill.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(LumiRadius.md),
-              border: Border.all(
-                color: swatch.accent.withValues(alpha: 0.48),
-                width: 1.2,
+      child: RepaintBoundary(
+        child: GestureDetector(
+          onPanStart: (_) {
+            setState(() => _dragging = true);
+          },
+          onPanUpdate: (details) {
+            setState(() {
+              _x += details.delta.dx;
+              _y += details.delta.dy;
+            });
+          },
+          onPanEnd: (_) {
+            setState(() => _dragging = false);
+            if (LumiDesignScope.maybeOf(context)?.hapticsEnabled ?? true) {
+              HapticFeedback.lightImpact();
+            }
+            widget.onMoveEnd(_x, _y);
+          },
+          onTap: widget.onEdit,
+          child: AnimatedScale(
+            scale: _dragging && !reduceMotion ? 1.035 : 1.0,
+            duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+            curve: LumiMotion.pop,
+            child: Container(
+              padding: const EdgeInsets.all(LumiSpacing.sm),
+              decoration: ShapeDecoration(
+                color: fill.withValues(alpha: 0.94),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(LumiRadius.md),
+                  side: BorderSide(
+                    color: swatch.accent.withValues(alpha: 0.48),
+                    width: 1.15,
+                  ),
+                ),
+                shadows: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: _dragging ? 0.24 : 0.10,
+                    ),
+                    blurRadius: _dragging ? 16 : 6,
+                    offset: Offset(0, _dragging ? 8 : 3),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: _dragging ? 0.28 : 0.14,
-                  ),
-                  blurRadius: _dragging ? 24 : 12,
-                  offset: Offset(0, _dragging ? 12 : 6),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            widget.sticky.title.isEmpty
-                                ? 'Sticky'
-                                : widget.sticky.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(color: ext.ink),
+              child: Stack(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.sticky.title.isEmpty
+                                  ? 'Sticky'
+                                  : widget.sticky.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(color: ext.ink),
+                            ),
                           ),
-                        ),
-                        Semantics(
-                          label: widget.sticky.pinned
-                              ? 'Unpin sticky'
-                              : 'Pin sticky',
-                          button: true,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: widget.onTogglePin,
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                widget.sticky.pinned
-                                    ? Icons.push_pin_rounded
-                                    : Icons.push_pin_outlined,
-                                size: 16,
-                                color: widget.sticky.pinned
-                                    ? swatch.accent
-                                    : ext.inkMuted,
+                          Semantics(
+                            label: widget.sticky.pinned
+                                ? 'Unpin sticky'
+                                : 'Pin sticky',
+                            button: true,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: widget.onTogglePin,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  widget.sticky.pinned
+                                      ? Icons.push_pin_rounded
+                                      : Icons.push_pin_outlined,
+                                  size: 16,
+                                  color: widget.sticky.pinned
+                                      ? swatch.accent
+                                      : ext.inkMuted,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        Semantics(
-                          label: 'Change sticky color',
-                          button: true,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: widget.onCycleColor,
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                Icons.palette_outlined,
-                                size: 16,
-                                color: ext.inkMuted,
+                          Semantics(
+                            label: 'Change sticky color',
+                            button: true,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: widget.onCycleColor,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.palette_outlined,
+                                  size: 16,
+                                  color: ext.inkMuted,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        Semantics(
-                          label: 'Delete sticky',
-                          button: true,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: widget.onDelete,
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: ext.inkMuted,
+                          Semantics(
+                            label: 'Delete sticky',
+                            button: true,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: widget.onDelete,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: ext.inkMuted,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Text(
-                        widget.sticky.plainText,
-                        overflow: TextOverflow.fade,
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: ext.ink.withValues(alpha: 0.88)),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                // Bottom-right resize handle
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onPanUpdate: (details) {
-                      setState(() {
-                        _w = (_w + details.delta.dx).clamp(140.0, 360.0);
-                        _h = (_h + details.delta.dy).clamp(130.0, 360.0);
-                      });
-                    },
-                    onPanEnd: (_) => widget.onResizeEnd(_w, _h),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.south_east_rounded,
-                        size: 14,
-                        color: swatch.accent,
+                      const SizedBox(height: 6),
+                      Expanded(
+                        child: Text(
+                          widget.sticky.plainText,
+                          overflow: TextOverflow.fade,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: ext.ink.withValues(alpha: 0.88),
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Bottom-right resize handle
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onPanUpdate: (details) {
+                        setState(() {
+                          _w = (_w + details.delta.dx).clamp(140.0, 360.0);
+                          _h = (_h + details.delta.dy).clamp(130.0, 360.0);
+                        });
+                      },
+                      onPanEnd: (_) => widget.onResizeEnd(_w, _h),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.south_east_rounded,
+                          size: 14,
+                          color: swatch.accent,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -464,15 +471,34 @@ class _DotGridPainter extends CustomPainter {
 
   final Color dotColor;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = dotColor;
+  static Size? _cachedSize;
+  static List<Offset> _cachedPoints = const [];
+
+  static List<Offset> _pointsFor(Size size) {
+    if (_cachedSize == size && _cachedPoints.isNotEmpty) {
+      return _cachedPoints;
+    }
     const step = 32.0;
+    final points = <Offset>[];
     for (double y = step; y < size.height; y += step) {
       for (double x = step; x < size.width; x += step) {
-        canvas.drawCircle(Offset(x, y), 1.3, paint);
+        points.add(Offset(x, y));
       }
     }
+    _cachedSize = size;
+    _cachedPoints = List.unmodifiable(points);
+    return _cachedPoints;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final points = _pointsFor(size);
+    if (points.isEmpty) return;
+    final paint = Paint()
+      ..color = dotColor
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPoints(ui.PointMode.points, points, paint);
   }
 
   @override
@@ -535,8 +561,9 @@ class _EditStickyDialogState extends State<_EditStickyDialog> {
         constraints: const BoxConstraints(maxWidth: 420),
         child: LumiGlass(
           borderRadius: LumiRadius.lg,
-          blur: 28,
+          blur: 20,
           elevated: true,
+          grouped: false,
           padding: const EdgeInsets.all(LumiSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,

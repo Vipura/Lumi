@@ -289,7 +289,7 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                                               .titleMedium,
                                         ),
                                         Text(
-                                          '24px blur • 1px directional rim • inner highlight',
+                                          '16px vibrancy blur • specular + caustic rim • inner bevel',
                                           style: Theme.of(scopedContext)
                                               .textTheme
                                               .bodySmall,

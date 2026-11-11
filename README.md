@@ -7,8 +7,8 @@
 ## Features (v1)
 
 - **Lumi Glass Design System (`lib/core/design/`)**:
-  - Reusable `LumiGlass` surface (`ClipRRect` + `BackdropFilter` + translucent directional gradient + 1px rim border + inner highlight + press-scale/haptic feedback) plus lightweight `LumiGlass.card` for 60/120 fps scrolling lists.
-  - `LumiBackground` animated multi-orb ambient canvas with **5 themes** (*Aurora*, *Sunset*, *Ocean*, *Forest*, *Mono*), automatic Light/Dark modes, time-of-day shift on the Today view, and full *Reduce transparency* / *Reduce motion* accessibility fallbacks.
+  - Reusable `LumiGlass` surface (`ClipRSuperellipse` + vibrant `ColorFilter.matrix`/`BackdropFilter.grouped` + specular/caustic rim & optical sheen + press-scale/haptic feedback) plus lightweight `LumiGlass.card` for locked 60/120 fps scrolling lists.
+  - `LumiBackground` zero-idle-cost multi-orb ambient canvas with **5 themes** (*Aurora*, *Sunset*, *Ocean*, *Forest*, *Mono*), automatic Light/Dark modes, time-of-day shift on the Today view, and full *Reduce transparency* / *Reduce motion* accessibility fallbacks.
   - Custom drawn `LumiLogo` glowing glass droplet mark.
 - **Instant Capture (< 2s)**: Quick-capture bar on Today plus a glowing center `+` glass capture sheet for **Notes**, **Checklists**, **Sticky Notes**, **Voice Notes**, **Photos**, **Reminders**, and **Templates**.
 - **Rich Text Notes & Editor**: Powered by `flutter_quill` storing Quill Delta JSON, auto-saving continuously, auto-deriving titles from the first line, showing live word counts, and keeping the reading/writing surface clean and distraction-free.

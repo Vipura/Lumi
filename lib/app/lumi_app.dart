@@ -19,6 +19,10 @@ class LumiApp extends ConsumerStatefulWidget {
 }
 
 class _LumiAppState extends ConsumerState<LumiApp> {
+  ThemeData? _cachedLightTheme;
+  ThemeData? _cachedDarkTheme;
+  Object? _themeCacheKey;
+
   @override
   void initState() {
     super.initState();
@@ -37,11 +41,50 @@ class _LumiAppState extends ConsumerState<LumiApp> {
     });
   }
 
+  void _ensureThemes({
+    required Color accent,
+    required bool reduceTransparency,
+    required bool reduceMotion,
+  }) {
+    final key = (
+      accent,
+      reduceTransparency,
+      reduceMotion,
+      widget.useGoogleFonts,
+    );
+    if (_themeCacheKey == key &&
+        _cachedLightTheme != null &&
+        _cachedDarkTheme != null) {
+      return;
+    }
+    _themeCacheKey = key;
+    _cachedLightTheme = LumiThemes.build(
+      brightness: Brightness.light,
+      accentColor: accent,
+      reduceTransparency: reduceTransparency,
+      reduceMotion: reduceMotion,
+      useGoogleFonts: widget.useGoogleFonts,
+    );
+    _cachedDarkTheme = LumiThemes.build(
+      brightness: Brightness.dark,
+      accentColor: accent,
+      reduceTransparency: reduceTransparency,
+      reduceMotion: reduceMotion,
+      useGoogleFonts: widget.useGoogleFonts,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
     final router = ref.watch(lumiRouterProvider);
     final accent = settings.accentPreset.color;
+
+    _ensureThemes(
+      accent: accent,
+      reduceTransparency: settings.reduceTransparency,
+      reduceMotion: settings.reduceMotion,
+    );
 
     return LumiDesignScope(
       reduceTransparency: settings.reduceTransparency,
@@ -54,20 +97,8 @@ class _LumiAppState extends ConsumerState<LumiApp> {
         debugShowCheckedModeBanner: false,
         routerConfig: router,
         themeMode: settings.themeMode,
-        theme: LumiThemes.build(
-          brightness: Brightness.light,
-          accentColor: accent,
-          reduceTransparency: settings.reduceTransparency,
-          reduceMotion: settings.reduceMotion,
-          useGoogleFonts: widget.useGoogleFonts,
-        ),
-        darkTheme: LumiThemes.build(
-          brightness: Brightness.dark,
-          accentColor: accent,
-          reduceTransparency: settings.reduceTransparency,
-          reduceMotion: settings.reduceMotion,
-          useGoogleFonts: widget.useGoogleFonts,
-        ),
+        theme: _cachedLightTheme,
+        darkTheme: _cachedDarkTheme,
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,

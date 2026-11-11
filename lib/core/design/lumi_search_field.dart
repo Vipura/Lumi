@@ -4,8 +4,8 @@ import 'lumi_glass.dart';
 import 'lumi_themes.dart';
 import 'lumi_tokens.dart';
 
-/// Frosted pill search input with clear action and optional trailing widget.
-class LumiGlassSearchField extends StatefulWidget {
+/// Frosted Liquid Glass pill search input with zero-rebuild typing clear button.
+class LumiGlassSearchField extends StatelessWidget {
   const LumiGlassSearchField({
     super.key,
     required this.controller,
@@ -17,6 +17,7 @@ class LumiGlassSearchField extends StatefulWidget {
     this.autofocus = false,
     this.trailing,
     this.focusNode,
+    this.grouped = true,
   });
 
   final TextEditingController controller;
@@ -28,45 +29,16 @@ class LumiGlassSearchField extends StatefulWidget {
   final bool autofocus;
   final Widget? trailing;
   final FocusNode? focusNode;
-
-  @override
-  State<LumiGlassSearchField> createState() => _LumiGlassSearchFieldState();
-}
-
-class _LumiGlassSearchFieldState extends State<LumiGlassSearchField> {
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onTextChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant LumiGlassSearchField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onTextChanged);
-      widget.controller.addListener(_onTextChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onTextChanged);
-    super.dispose();
-  }
-
-  void _onTextChanged() {
-    if (mounted) setState(() {});
-  }
+  final bool grouped;
 
   @override
   Widget build(BuildContext context) {
     final ext = context.lumiTheme;
-    final hasText = widget.controller.text.isNotEmpty;
 
     return LumiGlass(
       borderRadius: LumiRadius.pill,
-      blur: 22,
+      blur: 16,
+      grouped: grouped,
       padding: const EdgeInsets.symmetric(
         horizontal: LumiSpacing.md,
         vertical: LumiSpacing.xxs,
@@ -77,18 +49,18 @@ class _LumiGlassSearchFieldState extends State<LumiGlassSearchField> {
           const SizedBox(width: LumiSpacing.xs),
           Expanded(
             child: TextField(
-              controller: widget.controller,
-              focusNode: widget.focusNode,
-              readOnly: widget.readOnly,
-              autofocus: widget.autofocus,
-              onTap: widget.onTap,
-              onChanged: widget.onChanged,
-              onSubmitted: widget.onSubmitted,
+              controller: controller,
+              focusNode: focusNode,
+              readOnly: readOnly,
+              autofocus: autofocus,
+              onTap: onTap,
+              onChanged: onChanged,
+              onSubmitted: onSubmitted,
               textInputAction: TextInputAction.search,
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: ext.ink),
               decoration: InputDecoration(
-                hintText: widget.hintText,
+                hintText: hintText,
                 hintStyle: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: ext.inkMuted),
                 isDense: true,
@@ -97,17 +69,27 @@ class _LumiGlassSearchFieldState extends State<LumiGlassSearchField> {
               ),
             ),
           ),
-          if (hasText && !widget.readOnly)
-            IconButton(
-              icon: Icon(Icons.close_rounded, size: 18, color: ext.inkMuted),
-              tooltip: 'Clear search',
-              visualDensity: VisualDensity.compact,
-              onPressed: () {
-                widget.controller.clear();
-                widget.onChanged?.call('');
+          if (!readOnly)
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                if (value.text.isEmpty) return const SizedBox.shrink();
+                return IconButton(
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: ext.inkMuted,
+                  ),
+                  tooltip: 'Clear search',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    controller.clear();
+                    onChanged?.call('');
+                  },
+                );
               },
             ),
-          if (widget.trailing != null) widget.trailing!,
+          ?trailing,
         ],
       ),
     );

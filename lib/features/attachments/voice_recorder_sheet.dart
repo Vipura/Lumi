@@ -171,8 +171,9 @@ class _VoiceRecorderSheetBodyState
               boxShadow: [
                 BoxShadow(
                   color: (_recording ? LumiColors.danger : ext.accentColor)
-                      .withValues(alpha: 0.45),
-                  blurRadius: 24,
+                      .withValues(alpha: 0.40),
+                  blurRadius: 14,
+                  spreadRadius: -2,
                 ),
               ],
             ),
