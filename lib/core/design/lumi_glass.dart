@@ -253,7 +253,7 @@ class _LumiGlassState extends State<LumiGlass> {
                   colors: [fillTop, fillBottom],
                 ),
               ),
-        child: widget.child,
+        child: Material(type: MaterialType.transparency, child: widget.child),
       ),
     );
 
