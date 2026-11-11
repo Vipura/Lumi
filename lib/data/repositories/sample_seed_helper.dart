@@ -12,7 +12,7 @@ import 'reminders_repository.dart';
 
 /// Seeds realistic first-launch sample items once behind an explicit dev flag.
 abstract final class SampleSeedHelper {
-  static const seedKey = 'lumi.sample_seeded_v1';
+  static const seedKey = 'lumi.dev.sample_seeded_v1';
 
   static Future<void> seedIfFirstLaunch({
     required LumiDatabase db,
