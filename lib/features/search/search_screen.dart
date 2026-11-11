@@ -41,7 +41,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     setState(() => _searching = true);
     _debounce = Timer(
-      const Duration(milliseconds: 250),
+      const Duration(milliseconds: 180),
       () => _runSearch(query),
     );
   }
