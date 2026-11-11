@@ -186,7 +186,7 @@ class DriftItemsRepository implements ItemsRepository {
             plainText: plain,
             fallback: existing.type == LumiItemType.checklist.dbValue
                 ? 'Checklist'
-                : 'Untitled',
+                : 'Untitled note',
           )
         : title.trim();
 
