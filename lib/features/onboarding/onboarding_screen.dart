@@ -299,7 +299,7 @@ class _StepThree extends StatelessWidget {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => onSubmitted(),
             decoration: const InputDecoration(
-              hintText: 'Write your first note...',
+              hintText: 'e.g. Plan weekend trip, pick up fresh coffee, call Maya at 4 PM...',
               border: InputBorder.none,
             ),
           ),
