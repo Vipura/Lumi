@@ -239,7 +239,7 @@ class _ChecklistSectionState extends ConsumerState<ChecklistSection> {
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _addEntry(),
                   decoration: const InputDecoration(
-                    hintText: 'Add task item...',
+                    hintText: 'Add checklist step...',
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(vertical: 8),
