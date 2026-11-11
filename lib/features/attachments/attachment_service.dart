@@ -57,8 +57,8 @@ class LumiAttachmentService {
   }) async {
     final picked = await _imagePicker.pickImage(
       source: source,
-      imageQuality: 85,
-      maxWidth: 1920,
+      imageQuality: 90,
+      maxWidth: 2048,
     );
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();
