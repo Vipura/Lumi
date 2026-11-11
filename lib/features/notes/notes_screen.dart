@@ -339,7 +339,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         final card = NoteSummaryCard(
                           summary: s,
                           compact: true,
-                          heroPrefix: 'item',
+                          heroPrefix: 'notes',
                           onTap: () =>
                               context.push('/editor/${s.item.id}?hero=notes'),
                           onLongPress: () => _showCardActions(s),
@@ -374,7 +374,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                     final s = filtered[index];
                     final card = NoteSummaryCard(
                       summary: s,
-                      heroPrefix: 'item',
+                      heroPrefix: 'notes',
                       onTap: () =>
                           context.push('/editor/${s.item.id}?hero=notes'),
                       onLongPress: () => _showCardActions(s),
