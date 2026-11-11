@@ -41,6 +41,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   QuillController? _quillController;
   StreamSubscription<DocChange>? _docSub;
   Timer? _autosaveTimer;
+  Timer? _wordCountTimer;
 
   bool _loaded = false;
   bool _dirty = false;
@@ -110,11 +111,15 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
 
   void _onContentChanged() {
     if (!_loaded || _quillController == null) return;
-    final plain = _quillController!.document.toPlainText();
-    final nextCount = DeltaUtils.wordCount(plain);
-    if (nextCount != _wordCountNotifier.value) {
-      _wordCountNotifier.value = nextCount;
-    }
+    _wordCountTimer?.cancel();
+    _wordCountTimer = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted || _quillController == null) return;
+      final plain = _quillController!.document.toPlainText();
+      final nextCount = DeltaUtils.wordCount(plain);
+      if (nextCount != _wordCountNotifier.value) {
+        _wordCountNotifier.value = nextCount;
+      }
+    });
     _scheduleAutosave();
   }
 
@@ -145,6 +150,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _wordCountTimer?.cancel();
     if (_dirty && _quillController != null) {
       final bodyJson = jsonEncode(
         _quillController!.document.toDelta().toJson(),
@@ -516,17 +522,21 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
               LumiGlassChip(
                 label: activeReminders.isEmpty
                     ? 'Remind me'
-                    : DateFormat('MMM d, h:mm a')
-                          .format(activeReminders.first.fireAt),
+                    : (activeReminders.first.title.trim().isNotEmpty
+                          ? '${activeReminders.first.title.trim()} • ${DateFormat('MMM d, h:mm a').format(activeReminders.first.fireAt)}'
+                          : DateFormat('MMM d, h:mm a')
+                                .format(activeReminders.first.fireAt)),
                 icon: Icons.notifications_none_rounded,
                 selected: activeReminders.isNotEmpty,
                 onTap: () => showReminderPickerSheet(
                   context: context,
-                  ref: ref,
                   itemId: item.id,
                   itemTitle: _titleController.text.isNotEmpty
                       ? _titleController.text
                       : item.title,
+                  existingReminder: activeReminders.isNotEmpty
+                      ? activeReminders.first
+                      : null,
                 ),
                 onDelete: activeReminders.isNotEmpty
                     ? () async {
@@ -536,7 +546,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                             .cancelReminder(rem.id);
                         await ref
                             .read(notificationServiceProvider)
-                            .cancelReminder(rem.notificationId);
+                            .cancelReminderAndEarly(rem);
                       }
                     : null,
               ),
@@ -636,7 +646,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 padding: const EdgeInsets.only(right: LumiSpacing.sm),
                 child: LumiGlass(
                   borderRadius: LumiRadius.pill,
-                  blur: 16,
+                  useBlur: false,
+                  blur: 0,
+                  elevated: true,
+                  hasShadow: false,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4,
                     vertical: 2,
@@ -725,7 +738,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                     constraints: const BoxConstraints(maxWidth: 820),
                     child: LumiGlass(
                       borderRadius: LumiRadius.pill,
-                      blur: 16,
+                      blur: 8,
                       elevated: true,
                       padding: const EdgeInsets.symmetric(
                         horizontal: LumiSpacing.xs,

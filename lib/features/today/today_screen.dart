@@ -7,11 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/design/design_system.dart';
+import '../../core/utils/delta_utils.dart';
 import '../../data/db/lumi_database.dart';
 import '../../data/repositories/lumi_models.dart';
 import '../../data/repositories/providers.dart';
 import '../notes/widgets/note_summary_card.dart';
 import '../reminders/notification_service.dart';
+import '../reminders/reminder_picker_sheet.dart';
+import '../settings/backup_export_service.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -75,34 +78,67 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  Future<void> _snoozeReminder(Reminder r, Duration offset) async {
+  Future<void> _snoozeReminder(
+    Reminder r,
+    Item? parent,
+    Duration offset,
+  ) async {
+    final notifications = ref.read(notificationServiceProvider);
+    await notifications.cancelReminderAndEarly(r);
     final updated = await ref
         .read(remindersRepositoryProvider)
         .snoozeReminder(r.id, offset);
     if (updated != null) {
-      final item = await ref.read(itemsRepositoryProvider).getItem(r.itemId);
-      await ref
-          .read(notificationServiceProvider)
-          .scheduleForReminder(
-            reminder: updated,
-            title: item?.title ?? 'Lumi Reminder',
-          );
+      await notifications.scheduleForReminder(
+        reminder: updated,
+        title: updated.title.isNotEmpty
+            ? updated.title
+            : (parent?.title ?? 'Lumi Reminder'),
+      );
     }
   }
 
-  Future<void> _completeReminder(Reminder r) async {
+  Future<void> _completeReminder(Reminder r, Item? parent) async {
+    final notifications = ref.read(notificationServiceProvider);
+    await notifications.cancelReminderAndEarly(r);
     final updated = await ref
         .read(remindersRepositoryProvider)
         .completeReminder(r.id);
-    final notifications = ref.read(notificationServiceProvider);
-    await notifications.cancelReminder(r.notificationId);
     if (updated != null &&
         updated.status == LumiReminderStatus.scheduled.dbValue) {
-      final item = await ref.read(itemsRepositoryProvider).getItem(r.itemId);
       await notifications.scheduleForReminder(
         reminder: updated,
-        title: item?.title ?? 'Lumi Reminder',
+        title: updated.title.isNotEmpty
+            ? updated.title
+            : (parent?.title ?? 'Lumi Reminder'),
       );
+    }
+  }
+
+  Future<void> _openCalmWrite() async {
+    final item = await ref
+        .read(itemsRepositoryProvider)
+        .createItem(type: LumiItemType.calm);
+    if (mounted) {
+      unawaited(context.push('/calm/${item.id}'));
+    }
+  }
+
+  Future<void> _exportLatestCalmPdf(Item entry) async {
+    try {
+      final exported = await ref
+          .read(backupExportServiceProvider)
+          .exportNotePdf(entry);
+      if (exported && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Exported Calm Space entry as PDF.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('PDF export failed: $e')));
+      }
     }
   }
 
@@ -115,18 +151,24 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 
     final progress = ref.watch(todayProgressProvider);
     final summaries = ref.watch(itemSummariesProvider);
+    final calmEntries = ref.watch(calmFeedStreamProvider).value ?? const [];
     final reminders =
         ref.watch(scheduledRemindersStreamProvider).value ?? const [];
     final allEntries =
         ref.watch(allChecklistEntriesStreamProvider).value ?? const [];
 
     final itemById = {for (final s in summaries) s.item.id: s};
+    final visibleWorkspaceSummaries = summaries
+        .where(
+          (s) => s.type != LumiItemType.reminder && s.type != LumiItemType.calm,
+        )
+        .toList();
 
     final todayReminders = reminders.where((r) {
       return !r.fireAt.isAfter(todayEnd);
     }).toList();
 
-    final dueTodayItems = summaries.where((s) {
+    final dueTodayItems = visibleWorkspaceSummaries.where((s) {
       final due = s.item.dueDate;
       if (due == null) return false;
       return due.isBefore(todayEnd);
@@ -142,7 +184,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 
     final showEveningRollover = unfinishedDueCount > 0 && now.hour >= 17;
 
-    final pinned = summaries.where((s) => s.item.pinned).toList();
+    final pinned = visibleWorkspaceSummaries
+        .where((s) => s.item.pinned)
+        .toList();
     final dueTodayIds = dueTodayItems.map((s) => s.item.id).toSet();
     final todayEntries = allEntries
         .where((e) => dueTodayIds.contains(e.itemId))
@@ -178,12 +222,16 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                             children: [
                               Text(
                                 _greeting(now),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context)
                                     .textTheme
                                     .headlineMedium,
                               ),
                               Text(
                                 DateFormat('EEEE, MMMM d').format(now),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: ext.inkMuted),
                               ),
@@ -192,7 +240,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                         ),
                         LumiGlass(
                           borderRadius: LumiRadius.pill,
-                          blur: 16,
+                          useBlur: false,
+                          blur: 0,
+                          elevated: true,
+                          hasShadow: false,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 4,
                             vertical: 3,
@@ -233,8 +284,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                     // Instant Quick-Capture Bar (< 2 seconds)
                     LumiGlass(
                       borderRadius: LumiRadius.lg,
-                      blur: 16,
+                      useBlur: false,
+                      blur: 0,
                       elevated: true,
+                      hasShadow: false,
                       padding: const EdgeInsets.symmetric(
                         horizontal: LumiSpacing.md,
                         vertical: LumiSpacing.xs,
@@ -348,8 +401,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 
                     if (showEveningRollover) ...[
                       const SizedBox(height: LumiSpacing.sm),
-                      LumiGlass(
-                        blur: 16,
+                      LumiGlass.card(
                         tintColor: ext.accentColor,
                         padding: const EdgeInsets.all(LumiSpacing.md),
                         child: Row(
@@ -401,24 +453,150 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                       ),
                     ],
 
+                    // Calm Space Sanctuary Section
+                    const SizedBox(height: LumiSpacing.lg),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TodayHeader(
+                            title: 'Calm Space',
+                            count: calmEntries.length,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/calm'),
+                          child: const Text('Open Space'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: LumiSpacing.xs),
+                    LumiGlass.card(
+                      tintColor: ext.accentColor,
+                      onTap: () => calmEntries.isNotEmpty
+                          ? context.push('/calm/${calmEntries.first.id}')
+                          : context.push('/calm'),
+                      padding: const EdgeInsets.all(LumiSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: ext.accentColor.withValues(
+                                    alpha: 0.16,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.spa_rounded,
+                                  color: ext.accentColor,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: LumiSpacing.sm),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      calmEntries.isEmpty
+                                          ? 'Write thoughts, stories & reflections'
+                                          : (calmEntries.first.title
+                                                    .trim()
+                                                    .isEmpty
+                                                ? 'Calm Space Entry'
+                                                : calmEntries.first.title
+                                                      .trim()),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                    Text(
+                                      calmEntries.isEmpty
+                                          ? 'An unhurried space for whatever is on your mind — exportable as PDF.'
+                                          : (calmEntries.first.plainText
+                                                    .trim()
+                                                    .isNotEmpty
+                                                ? calmEntries.first.plainText
+                                                      .trim()
+                                                : '${DeltaUtils.wordCount(calmEntries.first.plainText)} words • Updated ${DateFormat('MMM d').format(calmEntries.first.updatedAt)}'),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: ext.inkMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: LumiSpacing.sm),
+                          Wrap(
+                            spacing: LumiSpacing.xs,
+                            runSpacing: LumiSpacing.xs,
+                            children: [
+                              LumiGlassLensButton(
+                                label: 'Write Thought',
+                                icon: Icons.edit_rounded,
+                                onPressed: _openCalmWrite,
+                              ),
+                              if (calmEntries.isNotEmpty)
+                                LumiGlassButton(
+                                  label: 'Export PDF',
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  onPressed: () =>
+                                      _exportLatestCalmPdf(calmEntries.first),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // Today's Reminders
                     if (todayReminders.isNotEmpty) ...[
                       const SizedBox(height: LumiSpacing.lg),
-                      _TodayHeader(
-                        title: 'Reminders',
-                        count: todayReminders.length,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _TodayHeader(
+                              title: 'Reminders',
+                              count: todayReminders.length,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.go('/reminders'),
+                            child: const Text('All reminders'),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: LumiSpacing.xs),
                       ...todayReminders.map((r) {
-                        final itemSummary = itemById[r.itemId];
-                        final itemTitle = itemSummary?.item.title ?? 'Reminder';
+                        final parent = itemById[r.itemId]?.item;
+                        final resolvedTitle = r.title.trim().isNotEmpty
+                            ? r.title.trim()
+                            : (parent?.title.trim().isNotEmpty == true
+                                  ? parent!.title.trim()
+                                  : 'Reminder');
                         final overdue = r.fireAt.isBefore(now);
                         return Padding(
                           padding: const EdgeInsets.only(
                             bottom: LumiSpacing.xs,
                           ),
                           child: LumiGlass.card(
-                            onTap: () => context.push('/editor/${r.itemId}'),
+                            onTap: () => showReminderPickerSheet(
+                              context: context,
+                              itemId: r.itemId,
+                              itemTitle: resolvedTitle,
+                              existingReminder: r,
+                            ),
                             padding: const EdgeInsets.all(LumiSpacing.sm),
                             child: Row(
                               children: [
@@ -435,9 +613,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        itemTitle.isEmpty
-                                            ? 'Reminder'
-                                            : itemTitle,
+                                        resolvedTitle,
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleSmall,
@@ -464,7 +640,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                                     color: ext.inkMuted,
                                     size: 20,
                                   ),
-                                  onSelected: (d) => _snoozeReminder(r, d),
+                                  onSelected: (d) =>
+                                      _snoozeReminder(r, parent, d),
                                   itemBuilder: (_) => const [
                                     PopupMenuItem(
                                       value: Duration(minutes: 15),
@@ -486,7 +663,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                                     color: LumiColors.success,
                                   ),
                                   tooltip: 'Complete reminder',
-                                  onPressed: () => _completeReminder(r),
+                                  onPressed: () => _completeReminder(r, parent),
                                 ),
                               ],
                             ),
@@ -647,7 +824,14 @@ class _TodayHeader extends StatelessWidget {
     final ext = context.lumiTheme;
     return Row(
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
         const SizedBox(width: LumiSpacing.xs),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

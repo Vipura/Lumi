@@ -35,7 +35,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _submitting = true);
 
     final settingsCtrl = ref.read(settingsControllerProvider.notifier);
-    await settingsCtrl.update((s) => s.copyWith(onboardingCompleted: true));
+    await settingsCtrl.update(
+      (s) => s.copyWith(onboardingCompleted: true, tourCompleted: false),
+    );
 
     final initialText = _firstNoteController.text.trim();
     String? createdId;

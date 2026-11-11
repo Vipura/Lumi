@@ -30,7 +30,7 @@ class LumiDatabase extends _$LumiDatabase {
   bool ftsAvailable = false;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -53,6 +53,12 @@ class LumiDatabase extends _$LumiDatabase {
         'ON reminders (fire_at, status)',
       );
       await _ensureFts5();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.addColumn(reminders, reminders.title);
+        await m.addColumn(reminders, reminders.earlyReminderMinutes);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');

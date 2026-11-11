@@ -8,5 +8,6 @@ export 'lumi_glass.dart';
 export 'lumi_logo.dart';
 export 'lumi_progress_ring.dart';
 export 'lumi_search_field.dart';
+export 'lumi_switch.dart';
 export 'lumi_themes.dart';
 export 'lumi_tokens.dart';

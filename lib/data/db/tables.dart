@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart';
 
-/// Core items table supporting notes, checklists, sticky notes, and board cards.
+/// Core items table supporting notes, checklists, sticky notes, board cards,
+/// standalone reminders, and Calm Space entries.
 class Items extends Table {
   TextColumn get id => text()();
-  TextColumn get type => text()(); // note | checklist | sticky | card
+  TextColumn get type =>
+      text()(); // note | checklist | sticky | card | reminder | calm
   TextColumn get title => text().withDefault(const Constant(''))();
   TextColumn get body =>
       text().withDefault(const Constant('[{"insert":"\\n"}]'))();
@@ -48,8 +50,11 @@ class Reminders extends Table {
   TextColumn get itemId =>
       text().references(Items, #id, onDelete: KeyAction.cascade)();
   TextColumn get entryId => text().nullable()();
+  TextColumn get title => text().withDefault(const Constant(''))();
   DateTimeColumn get fireAt => dateTime()();
   TextColumn get repeatRule => text().withDefault(const Constant('none'))();
+  IntColumn get earlyReminderMinutes =>
+      integer().withDefault(const Constant(0))();
   TextColumn get status => text().withDefault(const Constant('scheduled'))();
   IntColumn get notificationId => integer()();
 

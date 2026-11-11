@@ -13,8 +13,8 @@ import '../attachments/voice_recorder_sheet.dart';
 import '../reminders/reminder_picker_sheet.dart';
 import '../templates/templates_sheet.dart';
 
-/// Opens the signature Liquid Glass Capture bottom sheet from the center "+" button.
-Future<void> showLumiCaptureSheet(BuildContext context, WidgetRef ref) {
+/// Opens the signature Liquid Glass Capture bottom sheet from the "+" button.
+Future<void> showLumiCaptureSheet(BuildContext context, [WidgetRef? _]) {
   return showLumiGlassBottomSheet<void>(
     context: context,
     title: 'Capture anything',
@@ -45,6 +45,7 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
     final text = _quickController.text.trim();
     if (text.isEmpty || _busy) return;
     setState(() => _busy = true);
+    final router = GoRouter.of(widget.parentContext);
     final item = await ref
         .read(itemsRepositoryProvider)
         .createItem(type: LumiItemType.note, initialPlainText: text);
@@ -57,9 +58,7 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
           action: SnackBarAction(
             label: 'Open',
             onPressed: () {
-              if (widget.parentContext.mounted) {
-                widget.parentContext.push('/editor/${item.id}');
-              }
+              router.push('/editor/${item.id}');
             },
           ),
         ),
@@ -68,17 +67,19 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
   }
 
   Future<void> _captureNote() async {
+    final router = GoRouter.of(widget.parentContext);
     final item = await ref
         .read(itemsRepositoryProvider)
         .createItem(type: LumiItemType.note);
     if (!mounted) return;
     Navigator.of(context).pop();
     if (widget.parentContext.mounted) {
-      unawaited(widget.parentContext.push('/editor/${item.id}'));
+      unawaited(router.push('/editor/${item.id}'));
     }
   }
 
   Future<void> _captureChecklist() async {
+    final router = GoRouter.of(widget.parentContext);
     final item = await ref
         .read(itemsRepositoryProvider)
         .createItem(
@@ -92,11 +93,12 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
     if (!mounted) return;
     Navigator.of(context).pop();
     if (widget.parentContext.mounted) {
-      unawaited(widget.parentContext.push('/editor/${item.id}'));
+      unawaited(router.push('/editor/${item.id}'));
     }
   }
 
   Future<void> _captureSticky() async {
+    final router = GoRouter.of(widget.parentContext);
     final existing = ref.read(stickyItemsStreamProvider).value ?? const [];
     final offset = (existing.length % 5) * 28.0;
     final swatch =
@@ -119,29 +121,36 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
     if (!mounted) return;
     Navigator.of(context).pop();
     if (widget.parentContext.mounted) {
-      widget.parentContext.go('/wall');
+      router.go('/wall');
     }
   }
 
   Future<void> _captureVoice() async {
-    final item = await ref
-        .read(itemsRepositoryProvider)
-        .createItem(type: LumiItemType.note, title: 'Voice Note');
+    final router = GoRouter.of(widget.parentContext);
+    final itemsRepo = ref.read(itemsRepositoryProvider);
+    final item = await itemsRepo.createItem(
+      type: LumiItemType.note,
+      title: 'Voice Note',
+    );
     if (!mounted) return;
     Navigator.of(context).pop();
+    if (!widget.parentContext.mounted) return;
+
+    final recorded = await showVoiceRecorderSheet(
+      context: widget.parentContext,
+      itemId: item.id,
+    );
+    if (recorded == null) {
+      await itemsRepo.permanentlyDelete(item.id);
+      return;
+    }
     if (widget.parentContext.mounted) {
-      await showVoiceRecorderSheet(
-        context: widget.parentContext,
-        ref: ref,
-        itemId: item.id,
-      );
-      if (widget.parentContext.mounted) {
-        unawaited(widget.parentContext.push('/editor/${item.id}'));
-      }
+      unawaited(router.push('/editor/${item.id}'));
     }
   }
 
   Future<void> _capturePhoto() async {
+    final router = GoRouter.of(widget.parentContext);
     final item = await ref
         .read(itemsRepositoryProvider)
         .createItem(type: LumiItemType.note, title: 'Photo Note');
@@ -156,39 +165,27 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
     if (!mounted) return;
     Navigator.of(context).pop();
     if (widget.parentContext.mounted) {
-      unawaited(widget.parentContext.push('/editor/${item.id}'));
+      unawaited(router.push('/editor/${item.id}'));
     }
   }
 
   Future<void> _captureReminder() async {
-    final noteTitle = _quickController.text.trim().isNotEmpty
-        ? _quickController.text.trim()
-        : 'Reminder';
-    final item = await ref
-        .read(itemsRepositoryProvider)
-        .createItem(
-          type: LumiItemType.note,
-          title: noteTitle,
-          dueDate: DateTime.now(),
-        );
-    if (!mounted) return;
+    final titleText = _quickController.text.trim();
     Navigator.of(context).pop();
-    if (widget.parentContext.mounted) {
-      await showReminderPickerSheet(
-        context: widget.parentContext,
-        ref: ref,
-        itemId: item.id,
-        itemTitle: noteTitle,
-      );
-    }
+    if (!widget.parentContext.mounted) return;
+    await showReminderPickerSheet(
+      context: widget.parentContext,
+      itemTitle: titleText,
+    );
   }
 
   Future<void> _openTemplates() async {
+    final router = GoRouter.of(widget.parentContext);
     Navigator.of(context).pop();
     if (!widget.parentContext.mounted) return;
-    final createdId = await showTemplatesSheet(widget.parentContext, ref);
+    final createdId = await showTemplatesSheet(widget.parentContext);
     if (createdId != null && widget.parentContext.mounted) {
-      unawaited(widget.parentContext.push('/editor/$createdId'));
+      unawaited(router.push('/editor/$createdId'));
     }
   }
 

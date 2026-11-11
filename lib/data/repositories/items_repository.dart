@@ -180,13 +180,18 @@ class DriftItemsRepository implements ItemsRepository {
     final existing = await _db.itemsDao.getItemById(id);
     if (existing == null) return;
     final plain = DeltaUtils.plainTextFromDeltaJson(bodyDeltaJson);
+    final fallbackTitle = switch (LumiItemType.fromDb(existing.type)) {
+      LumiItemType.checklist => 'Checklist',
+      LumiItemType.calm => 'Calm Space Entry',
+      LumiItemType.card => 'Untitled plan',
+      LumiItemType.reminder => 'Reminder',
+      _ => 'Untitled note',
+    };
     final resolvedTitle = autoDeriveTitle
         ? DeltaUtils.deriveTitle(
             explicitTitle: title,
             plainText: plain,
-            fallback: existing.type == LumiItemType.checklist.dbValue
-                ? 'Checklist'
-                : 'Untitled note',
+            fallback: fallbackTitle,
           )
         : title.trim();
 

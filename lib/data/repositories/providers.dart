@@ -109,6 +109,11 @@ final scheduledRemindersStreamProvider = StreamProvider<List<Reminder>>(
   (ref) => ref.watch(remindersRepositoryProvider).watchScheduledReminders(),
 );
 
+final allRemindersStreamProvider = StreamProvider<List<Reminder>>(
+  (ref) =>
+      ref.watch(remindersRepositoryProvider).watchAllNonCancelledReminders(),
+);
+
 final pinnedItemsStreamProvider = StreamProvider<List<Item>>(
   (ref) => ref.watch(itemsRepositoryProvider).watchPinnedItems(),
 );
@@ -132,13 +137,29 @@ final trashItemsStreamProvider = StreamProvider<List<Item>>(
 final notesFeedStreamProvider = StreamProvider<List<Item>>((ref) {
   return ref
       .watch(itemsRepositoryProvider)
-      .watchActiveItems(
-        types: const [
-          LumiItemType.note,
-          LumiItemType.checklist,
-          LumiItemType.card,
-        ],
-      );
+      .watchActiveItems(type: LumiItemType.note);
+});
+
+final checklistsFeedStreamProvider = StreamProvider<List<Item>>((ref) {
+  return ref
+      .watch(itemsRepositoryProvider)
+      .watchActiveItems(type: LumiItemType.checklist);
+});
+
+final plansFeedStreamProvider = StreamProvider<List<Item>>((ref) {
+  return ref
+      .watch(itemsRepositoryProvider)
+      .watchActiveItems(type: LumiItemType.card);
+});
+
+final calmFeedStreamProvider = StreamProvider<List<Item>>((ref) {
+  return ref
+      .watch(itemsRepositoryProvider)
+      .watchActiveItems(type: LumiItemType.calm);
+});
+
+final allActiveItemsStreamProvider = StreamProvider<List<Item>>((ref) {
+  return ref.watch(itemsRepositoryProvider).watchActiveItems();
 });
 
 final itemStreamProvider = StreamProvider.family<Item?, String>(
@@ -168,9 +189,74 @@ final itemTagsStreamProvider = StreamProvider.family<List<Tag>, String>(
       ref.watch(organizationRepositoryProvider).watchTagsForItem(itemId),
 );
 
-/// Combines live streams into rich [LumiItemSummary] models for fast list rendering.
-final itemSummariesProvider = Provider<List<LumiItemSummary>>((ref) {
+/// Strict summary list containing ONLY Notes (`LumiItemType.note`).
+final notesSummariesProvider = Provider<List<LumiItemSummary>>((ref) {
   final items = ref.watch(notesFeedStreamProvider).value ?? const [];
+  final collections = ref.watch(collectionsStreamProvider).value ?? const [];
+  final tags = ref.watch(tagsStreamProvider).value ?? const [];
+  final itemTags = ref.watch(allItemTagsStreamProvider).value ?? const [];
+  final attachments = ref.watch(allAttachmentsStreamProvider).value ?? const [];
+  final reminders =
+      ref.watch(scheduledRemindersStreamProvider).value ?? const [];
+
+  return buildItemSummaries(
+    items: items,
+    collections: collections,
+    tags: tags,
+    itemTags: itemTags,
+    entries: const [],
+    attachments: attachments,
+    reminders: reminders,
+  );
+});
+
+/// Strict summary list containing ONLY Checklists (`LumiItemType.checklist`).
+final checklistsSummariesProvider = Provider<List<LumiItemSummary>>((ref) {
+  final items = ref.watch(checklistsFeedStreamProvider).value ?? const [];
+  final collections = ref.watch(collectionsStreamProvider).value ?? const [];
+  final tags = ref.watch(tagsStreamProvider).value ?? const [];
+  final itemTags = ref.watch(allItemTagsStreamProvider).value ?? const [];
+  final entries =
+      ref.watch(allChecklistEntriesStreamProvider).value ?? const [];
+  final reminders =
+      ref.watch(scheduledRemindersStreamProvider).value ?? const [];
+
+  return buildItemSummaries(
+    items: items,
+    collections: collections,
+    tags: tags,
+    itemTags: itemTags,
+    entries: entries,
+    attachments: const [],
+    reminders: reminders,
+  );
+});
+
+/// Strict summary list containing ONLY Plans (`LumiItemType.card`).
+final plansSummariesProvider = Provider<List<LumiItemSummary>>((ref) {
+  final items = ref.watch(plansFeedStreamProvider).value ?? const [];
+  final collections = ref.watch(collectionsStreamProvider).value ?? const [];
+  final tags = ref.watch(tagsStreamProvider).value ?? const [];
+  final itemTags = ref.watch(allItemTagsStreamProvider).value ?? const [];
+  final entries =
+      ref.watch(allChecklistEntriesStreamProvider).value ?? const [];
+  final reminders =
+      ref.watch(scheduledRemindersStreamProvider).value ?? const [];
+
+  return buildItemSummaries(
+    items: items,
+    collections: collections,
+    tags: tags,
+    itemTags: itemTags,
+    entries: entries,
+    attachments: const [],
+    reminders: reminders,
+  );
+});
+
+/// Cross-type active summary list used by Today overview & item lookups.
+final itemSummariesProvider = Provider<List<LumiItemSummary>>((ref) {
+  final items = ref.watch(allActiveItemsStreamProvider).value ?? const [];
   final collections = ref.watch(collectionsStreamProvider).value ?? const [];
   final tags = ref.watch(tagsStreamProvider).value ?? const [];
   final itemTags = ref.watch(allItemTagsStreamProvider).value ?? const [];
@@ -249,7 +335,7 @@ List<LumiItemSummary> buildItemSummaries({
 final todayProgressProvider = Provider<LumiTodayProgress>((ref) {
   final entries =
       ref.watch(allChecklistEntriesStreamProvider).value ?? const [];
-  final items = ref.watch(notesFeedStreamProvider).value ?? const [];
+  final items = ref.watch(allActiveItemsStreamProvider).value ?? const [];
   final now = DateTime.now();
   final todayStart = DateTime(now.year, now.month, now.day);
   final todayEnd = todayStart.add(const Duration(days: 1));

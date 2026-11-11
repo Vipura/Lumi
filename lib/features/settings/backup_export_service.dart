@@ -5,8 +5,9 @@ import 'package:archive/archive.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, compute, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -15,11 +16,29 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/utils/delta_utils.dart';
 import '../../core/utils/local_file_io.dart';
 import '../../data/db/lumi_database.dart';
+import '../../data/repositories/lumi_models.dart';
 import '../../data/repositories/providers.dart';
 
 final backupExportServiceProvider = Provider<LumiBackupExportService>(
   (ref) => LumiBackupExportService(ref.watch(databaseProvider)),
 );
+
+Uint8List? _normalizePdfImageBytes(Uint8List rawBytes) {
+  final decoded = img.decodeImage(rawBytes);
+  if (decoded == null) return null;
+  var image = img.bakeOrientation(decoded);
+  if (image.width > 1400 || image.height > 1400) {
+    image = img.copyResize(
+      image,
+      width: image.width >= image.height ? 1400 : null,
+      height: image.height > image.width ? 1400 : null,
+    );
+  }
+  if (image.numChannels == 4 || image.hasPalette) {
+    return Uint8List.fromList(img.encodePng(image));
+  }
+  return Uint8List.fromList(img.encodeJpg(image, quality: 88));
+}
 
 class LumiBackupExportService {
   LumiBackupExportService(this._db);
@@ -49,9 +68,32 @@ class LumiBackupExportService {
     );
   }
 
-  Future<bool> exportNotePdf(Item item) async {
+  /// Renders [item], its plain text, checklist entries, and any attached images
+  /// into a portable A4 PDF document.
+  Future<Uint8List> buildNotePdfBytes(Item item) async {
     final entries = await _db.checklistDao.getEntriesForItem(item.id);
-    final plain = DeltaUtils.plainTextFromDeltaJson(item.body);
+    final attachments = await _db.attachmentsDao.getAttachmentsForItem(item.id);
+    final plainFromDelta = DeltaUtils.plainTextFromDeltaJson(item.body);
+    final plain = plainFromDelta.isNotEmpty ? plainFromDelta : item.plainText;
+
+    final pdfImages = <({String name, Uint8List bytes})>[];
+    for (final att in attachments) {
+      if (att.kind != LumiAttachmentKind.image.dbValue) continue;
+      final rawBytes = await _loadImageAttachmentBytes(att);
+      if (rawBytes == null || rawBytes.isEmpty) continue;
+      final normalized = await compute(_normalizePdfImageBytes, rawBytes);
+      final resolved = normalized ?? rawBytes;
+      if (resolved.isEmpty) continue;
+      pdfImages.add((name: att.name, bytes: resolved));
+    }
+
+    final type = LumiItemType.fromDb(item.type);
+    final defaultTitle = switch (type) {
+      LumiItemType.calm => 'Calm Space Entry',
+      LumiItemType.checklist => 'Checklist',
+      LumiItemType.card => 'Plan',
+      _ => 'Untitled Note',
+    };
 
     final doc = pw.Document();
     doc.addPage(
@@ -60,7 +102,7 @@ class LumiBackupExportService {
         margin: const pw.EdgeInsets.all(36),
         build: (ctx) => [
           pw.Text(
-            item.title.isEmpty ? 'Untitled Note' : item.title,
+            item.title.trim().isEmpty ? defaultTitle : item.title.trim(),
             style: const pw.TextStyle(
               fontSize: 22,
               fontWeight: pw.FontWeight.bold,
@@ -97,18 +139,106 @@ class LumiBackupExportService {
               ),
             ),
           ],
+          if (pdfImages.isNotEmpty) ...[
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Attached Photos',
+              style: const pw.TextStyle(
+                fontSize: 15,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            for (final imgEntry in pdfImages) ...[
+              pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 12),
+                padding: const pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300, width: 0.7),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.ConstrainedBox(
+                      constraints: const pw.BoxConstraints(maxHeight: 280),
+                      child: pw.Center(
+                        child: pw.Image(
+                          pw.MemoryImage(imgEntry.bytes),
+                          fit: pw.BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    if (imgEntry.name.isNotEmpty) ...[
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        imgEntry.name,
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
 
-    final pdfBytes = await doc.save();
-    final safeName = _sanitizeFileName(item.title, fallback: 'lumi_note');
+    return doc.save();
+  }
+
+  Future<bool> exportNotePdf(Item item) async {
+    final pdfBytes = await buildNotePdfBytes(item);
+    final fallback = item.type == LumiItemType.calm.dbValue
+        ? 'lumi_calm_entry'
+        : 'lumi_note';
+    final safeName = _sanitizeFileName(item.title, fallback: fallback);
     return _shareBytes(
       bytes: pdfBytes,
       fileName: '$safeName.pdf',
       mimeType: 'application/pdf',
       subject: item.title,
     );
+  }
+
+  Future<Uint8List?> _loadImageAttachmentBytes(Attachment att) async {
+    Uint8List? decodeDataUrl(String? raw) {
+      if (raw == null || !raw.startsWith('data:')) return null;
+      final commaIdx = raw.indexOf(',');
+      if (commaIdx == -1 || commaIdx + 1 >= raw.length) return null;
+      try {
+        return base64Decode(raw.substring(commaIdx + 1));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final fromPathDataUrl = decodeDataUrl(att.path);
+    if (fromPathDataUrl != null) return fromPathDataUrl;
+
+    if (!att.path.startsWith('http')) {
+      final bytes = await readLocalFileBytes(att.path);
+      if (bytes != null && bytes.isNotEmpty) return bytes;
+    }
+
+    if (att.metadataJson != null) {
+      try {
+        final meta = jsonDecode(att.metadataJson!) as Map<String, dynamic>;
+        final thumbPath = meta['thumbPath'] as String?;
+        if (thumbPath != null && thumbPath.isNotEmpty) {
+          final thumbBytes = await readLocalFileBytes(thumbPath);
+          if (thumbBytes != null && thumbBytes.isNotEmpty) return thumbBytes;
+        }
+        final thumbData = decodeDataUrl(meta['thumbDataUrl'] as String?);
+        if (thumbData != null) return thumbData;
+      } catch (_) {}
+    }
+
+    return null;
   }
 
   /// Creates a local JSON + attachments `.zip` backup and shares/saves it.
@@ -149,7 +279,7 @@ class LumiBackupExportService {
     }
 
     final payload = {
-      'version': 1,
+      'version': 2,
       'exportedAt': DateTime.now().toIso8601String(),
       'collections': collections
           .map(
@@ -209,7 +339,9 @@ class LumiBackupExportService {
               'id': r.id,
               'itemId': r.itemId,
               'entryId': r.entryId,
+              'title': r.title,
               'fireAt': r.fireAt.toIso8601String(),
+              'earlyReminderMinutes': r.earlyReminderMinutes,
               'repeatRule': r.repeatRule,
               'status': r.status,
               'notificationId': r.notificationId,
@@ -372,7 +504,9 @@ class LumiBackupExportService {
             id: m['id'] as String,
             itemId: m['itemId'] as String,
             entryId: Value(m['entryId'] as String?),
+            title: Value(m['title'] as String? ?? ''),
             fireAt: DateTime.parse(m['fireAt'] as String),
+            earlyReminderMinutes: Value(m['earlyReminderMinutes'] as int? ?? 0),
             repeatRule: Value(m['repeatRule'] as String? ?? 'none'),
             status: Value(m['status'] as String? ?? 'scheduled'),
             notificationId: m['notificationId'] as int,

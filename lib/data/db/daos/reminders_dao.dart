@@ -27,6 +27,22 @@ class RemindersDao extends DatabaseAccessor<LumiDatabase>
     );
   }
 
+  Stream<List<Reminder>> watchAllNonCancelledReminders() {
+    final query =
+        select(reminders)
+            .join([innerJoin(items, items.id.equalsExp(reminders.itemId))])
+          ..where(
+            items.deletedAt.isNull() &
+                reminders.status.equals('cancelled').not(),
+          )
+          ..orderBy([
+            OrderingTerm(expression: reminders.fireAt, mode: OrderingMode.asc),
+          ]);
+    return query.watch().map(
+      (rows) => rows.map((r) => r.readTable(reminders)).toList(),
+    );
+  }
+
   Stream<List<Reminder>> watchRemindersForItem(String itemId) {
     return (select(reminders)
           ..where((r) => r.itemId.equals(itemId))

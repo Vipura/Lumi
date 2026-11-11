@@ -37,7 +37,10 @@ class LumiGlassSearchField extends StatelessWidget {
 
     return LumiGlass(
       borderRadius: LumiRadius.pill,
-      blur: 16,
+      blur: 0,
+      useBlur: false,
+      elevated: true,
+      hasShadow: false,
       grouped: grouped,
       padding: const EdgeInsets.symmetric(
         horizontal: LumiSpacing.md,

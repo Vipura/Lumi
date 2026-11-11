@@ -44,6 +44,67 @@ void main() {
     );
   });
 
+  test('ReminderScheduleLogic computes early reminder timestamps cleanly', () {
+    final target = DateTime(2026, 3, 30, 14, 0);
+    expect(
+      ReminderScheduleLogic.computeEarlyFireAt(target, LumiEarlyReminder.none),
+      isNull,
+    );
+    expect(
+      ReminderScheduleLogic.computeEarlyFireAt(target, LumiEarlyReminder.min5),
+      DateTime(2026, 3, 30, 13, 55),
+    );
+    expect(
+      ReminderScheduleLogic.computeEarlyFireAt(target, LumiEarlyReminder.hour1),
+      DateTime(2026, 3, 30, 13, 0),
+    );
+    expect(
+      ReminderScheduleLogic.computeEarlyFireAt(target, LumiEarlyReminder.day1),
+      DateTime(2026, 3, 29, 14, 0),
+    );
+    // Clamps March 30 - 1 month to February 28 in non-leap year 2026.
+    expect(
+      ReminderScheduleLogic.computeEarlyFireAt(
+        target,
+        LumiEarlyReminder.month1,
+      ),
+      DateTime(2026, 2, 28, 14, 0),
+    );
+  });
+
+  test('RemindersRepository updates reminder time, title, and early alert in-place', () async {
+    final item = await itemsRepo.createItem(
+      type: LumiItemType.reminder,
+      title: 'Original title',
+      dueDate: DateTime(2026, 11, 15, 9, 0),
+    );
+    final created = await remindersRepo.scheduleReminder(
+      itemId: item.id,
+      title: 'Original title',
+      fireAt: DateTime(2026, 11, 15, 9, 0),
+      earlyReminderMinutes: LumiEarlyReminder.min15.minutes,
+      repeatRule: LumiRepeatRule.none,
+    );
+
+    final updated = await remindersRepo.updateReminder(
+      id: created.id,
+      title: 'Updated dentist visit',
+      fireAt: DateTime(2026, 11, 16, 16, 45),
+      repeatRule: LumiRepeatRule.weekly,
+      earlyReminderMinutes: LumiEarlyReminder.hour1.minutes,
+    );
+
+    expect(updated?.id, created.id);
+    expect(updated?.title, 'Updated dentist visit');
+    expect(updated?.fireAt, DateTime(2026, 11, 16, 16, 45));
+    expect(updated?.repeatRule, LumiRepeatRule.weekly.dbValue);
+    expect(updated?.earlyReminderMinutes, 60);
+
+    final refreshedParent = await itemsRepo.getItem(item.id);
+    expect(refreshedParent?.title, 'Updated dentist visit');
+    expect(refreshedParent?.dueDate, DateTime(2026, 11, 16, 16, 45));
+  });
+
   test('RemindersRepository snoozes and advances repeating reminders on completion', () async {
     final item = await itemsRepo.createItem(
       type: LumiItemType.note,

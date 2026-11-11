@@ -209,7 +209,6 @@ class _ChecklistSectionState extends ConsumerState<ChecklistSection> {
                   },
                   onRemind: () => showReminderPickerSheet(
                     context: context,
-                    ref: ref,
                     itemId: widget.itemId,
                     itemTitle: widget.itemTitle,
                     entryId: entry.id,

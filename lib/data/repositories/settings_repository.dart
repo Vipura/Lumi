@@ -14,6 +14,7 @@ class LumiUserSettings {
     this.hapticsEnabled = true,
     this.biometricLockEnabled = false,
     this.onboardingCompleted = false,
+    this.tourCompleted = false,
     this.notesGridView = true,
     this.recentSearches = const [],
   });
@@ -26,6 +27,7 @@ class LumiUserSettings {
   final bool hapticsEnabled;
   final bool biometricLockEnabled;
   final bool onboardingCompleted;
+  final bool tourCompleted;
   final bool notesGridView;
   final List<String> recentSearches;
 
@@ -38,6 +40,7 @@ class LumiUserSettings {
     bool? hapticsEnabled,
     bool? biometricLockEnabled,
     bool? onboardingCompleted,
+    bool? tourCompleted,
     bool? notesGridView,
     List<String>? recentSearches,
   }) {
@@ -50,6 +53,7 @@ class LumiUserSettings {
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      tourCompleted: tourCompleted ?? this.tourCompleted,
       notesGridView: notesGridView ?? this.notesGridView,
       recentSearches: recentSearches ?? this.recentSearches,
     );
@@ -69,6 +73,7 @@ class SettingsRepository {
   static const _kHaptics = 'lumi.hapticsEnabled';
   static const _kBiometric = 'lumi.biometricLockEnabled';
   static const _kOnboarding = 'lumi.onboardingCompleted';
+  static const _kTourCompleted = 'lumi.tourCompleted';
   static const _kNotesGrid = 'lumi.notesGridView';
   static const _kRecentSearches = 'lumi.recentSearches';
 
@@ -76,6 +81,7 @@ class SettingsRepository {
     final themeIndex = _prefs.getInt(_kThemeMode) ?? ThemeMode.system.index;
     final bgName = _prefs.getString(_kBgTheme);
     final accentName = _prefs.getString(_kAccent);
+    final onboardingDone = _prefs.getBool(_kOnboarding) ?? false;
 
     return LumiUserSettings(
       themeMode:
@@ -92,7 +98,8 @@ class SettingsRepository {
       reduceMotion: _prefs.getBool(_kReduceMotion) ?? false,
       hapticsEnabled: _prefs.getBool(_kHaptics) ?? true,
       biometricLockEnabled: _prefs.getBool(_kBiometric) ?? false,
-      onboardingCompleted: _prefs.getBool(_kOnboarding) ?? false,
+      onboardingCompleted: onboardingDone,
+      tourCompleted: _prefs.getBool(_kTourCompleted) ?? onboardingDone,
       notesGridView: _prefs.getBool(_kNotesGrid) ?? true,
       recentSearches: _prefs.getStringList(_kRecentSearches) ?? const [],
     );
@@ -107,6 +114,7 @@ class SettingsRepository {
     await _prefs.setBool(_kHaptics, settings.hapticsEnabled);
     await _prefs.setBool(_kBiometric, settings.biometricLockEnabled);
     await _prefs.setBool(_kOnboarding, settings.onboardingCompleted);
+    await _prefs.setBool(_kTourCompleted, settings.tourCompleted);
     await _prefs.setBool(_kNotesGrid, settings.notesGridView);
     await _prefs.setStringList(_kRecentSearches, settings.recentSearches);
   }

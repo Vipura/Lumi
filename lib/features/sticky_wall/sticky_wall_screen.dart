@@ -329,7 +329,7 @@ class _StickyCardWidgetState extends State<_StickyCardWidget> {
               padding: const EdgeInsets.all(LumiSpacing.sm),
               decoration: ShapeDecoration(
                 color: fill.withValues(alpha: 0.94),
-                shape: RoundedSuperellipseBorder(
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(LumiRadius.md),
                   side: BorderSide(
                     color: swatch.accent.withValues(alpha: 0.48),

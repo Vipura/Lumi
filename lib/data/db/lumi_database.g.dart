@@ -1556,6 +1556,16 @@ class $RemindersTable extends Reminders
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _fireAtMeta = const VerificationMeta('fireAt');
   @override
   late final GeneratedColumn<DateTime> fireAt = GeneratedColumn<DateTime>(
@@ -1576,6 +1586,17 @@ class $RemindersTable extends Reminders
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant('none'),
+  );
+  static const VerificationMeta _earlyReminderMinutesMeta =
+      const VerificationMeta('earlyReminderMinutes');
+  @override
+  late final GeneratedColumn<int> earlyReminderMinutes = GeneratedColumn<int>(
+    'early_reminder_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -1603,8 +1624,10 @@ class $RemindersTable extends Reminders
     id,
     itemId,
     entryId,
+    title,
     fireAt,
     repeatRule,
+    earlyReminderMinutes,
     status,
     notificationId,
   ];
@@ -1639,6 +1662,12 @@ class $RemindersTable extends Reminders
         entryId.isAcceptableOrUnknown(data['entry_id']!, _entryIdMeta),
       );
     }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
     if (data.containsKey('fire_at')) {
       context.handle(
         _fireAtMeta,
@@ -1651,6 +1680,15 @@ class $RemindersTable extends Reminders
       context.handle(
         _repeatRuleMeta,
         repeatRule.isAcceptableOrUnknown(data['repeat_rule']!, _repeatRuleMeta),
+      );
+    }
+    if (data.containsKey('early_reminder_minutes')) {
+      context.handle(
+        _earlyReminderMinutesMeta,
+        earlyReminderMinutes.isAcceptableOrUnknown(
+          data['early_reminder_minutes']!,
+          _earlyReminderMinutesMeta,
+        ),
       );
     }
     if (data.containsKey('status')) {
@@ -1691,6 +1729,10 @@ class $RemindersTable extends Reminders
         DriftSqlType.string,
         data['${effectivePrefix}entry_id'],
       ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
       fireAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}fire_at'],
@@ -1698,6 +1740,10 @@ class $RemindersTable extends Reminders
       repeatRule: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}repeat_rule'],
+      )!,
+      earlyReminderMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}early_reminder_minutes'],
       )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -1720,16 +1766,20 @@ class Reminder extends DataClass implements Insertable<Reminder> {
   final String id;
   final String itemId;
   final String? entryId;
+  final String title;
   final DateTime fireAt;
   final String repeatRule;
+  final int earlyReminderMinutes;
   final String status;
   final int notificationId;
   const Reminder({
     required this.id,
     required this.itemId,
     this.entryId,
+    required this.title,
     required this.fireAt,
     required this.repeatRule,
+    required this.earlyReminderMinutes,
     required this.status,
     required this.notificationId,
   });
@@ -1741,8 +1791,10 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     if (!nullToAbsent || entryId != null) {
       map['entry_id'] = Variable<String>(entryId);
     }
+    map['title'] = Variable<String>(title);
     map['fire_at'] = Variable<DateTime>(fireAt);
     map['repeat_rule'] = Variable<String>(repeatRule);
+    map['early_reminder_minutes'] = Variable<int>(earlyReminderMinutes);
     map['status'] = Variable<String>(status);
     map['notification_id'] = Variable<int>(notificationId);
     return map;
@@ -1755,8 +1807,10 @@ class Reminder extends DataClass implements Insertable<Reminder> {
       entryId: entryId == null && nullToAbsent
           ? const Value.absent()
           : Value(entryId),
+      title: Value(title),
       fireAt: Value(fireAt),
       repeatRule: Value(repeatRule),
+      earlyReminderMinutes: Value(earlyReminderMinutes),
       status: Value(status),
       notificationId: Value(notificationId),
     );
@@ -1771,8 +1825,12 @@ class Reminder extends DataClass implements Insertable<Reminder> {
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String>(json['itemId']),
       entryId: serializer.fromJson<String?>(json['entryId']),
+      title: serializer.fromJson<String>(json['title']),
       fireAt: serializer.fromJson<DateTime>(json['fireAt']),
       repeatRule: serializer.fromJson<String>(json['repeatRule']),
+      earlyReminderMinutes: serializer.fromJson<int>(
+        json['earlyReminderMinutes'],
+      ),
       status: serializer.fromJson<String>(json['status']),
       notificationId: serializer.fromJson<int>(json['notificationId']),
     );
@@ -1784,8 +1842,10 @@ class Reminder extends DataClass implements Insertable<Reminder> {
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String>(itemId),
       'entryId': serializer.toJson<String?>(entryId),
+      'title': serializer.toJson<String>(title),
       'fireAt': serializer.toJson<DateTime>(fireAt),
       'repeatRule': serializer.toJson<String>(repeatRule),
+      'earlyReminderMinutes': serializer.toJson<int>(earlyReminderMinutes),
       'status': serializer.toJson<String>(status),
       'notificationId': serializer.toJson<int>(notificationId),
     };
@@ -1795,16 +1855,20 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     String? id,
     String? itemId,
     Value<String?> entryId = const Value.absent(),
+    String? title,
     DateTime? fireAt,
     String? repeatRule,
+    int? earlyReminderMinutes,
     String? status,
     int? notificationId,
   }) => Reminder(
     id: id ?? this.id,
     itemId: itemId ?? this.itemId,
     entryId: entryId.present ? entryId.value : this.entryId,
+    title: title ?? this.title,
     fireAt: fireAt ?? this.fireAt,
     repeatRule: repeatRule ?? this.repeatRule,
+    earlyReminderMinutes: earlyReminderMinutes ?? this.earlyReminderMinutes,
     status: status ?? this.status,
     notificationId: notificationId ?? this.notificationId,
   );
@@ -1813,10 +1877,14 @@ class Reminder extends DataClass implements Insertable<Reminder> {
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
       entryId: data.entryId.present ? data.entryId.value : this.entryId,
+      title: data.title.present ? data.title.value : this.title,
       fireAt: data.fireAt.present ? data.fireAt.value : this.fireAt,
       repeatRule: data.repeatRule.present
           ? data.repeatRule.value
           : this.repeatRule,
+      earlyReminderMinutes: data.earlyReminderMinutes.present
+          ? data.earlyReminderMinutes.value
+          : this.earlyReminderMinutes,
       status: data.status.present ? data.status.value : this.status,
       notificationId: data.notificationId.present
           ? data.notificationId.value
@@ -1830,8 +1898,10 @@ class Reminder extends DataClass implements Insertable<Reminder> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('entryId: $entryId, ')
+          ..write('title: $title, ')
           ..write('fireAt: $fireAt, ')
           ..write('repeatRule: $repeatRule, ')
+          ..write('earlyReminderMinutes: $earlyReminderMinutes, ')
           ..write('status: $status, ')
           ..write('notificationId: $notificationId')
           ..write(')'))
@@ -1843,8 +1913,10 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     id,
     itemId,
     entryId,
+    title,
     fireAt,
     repeatRule,
+    earlyReminderMinutes,
     status,
     notificationId,
   );
@@ -1855,8 +1927,10 @@ class Reminder extends DataClass implements Insertable<Reminder> {
           other.id == this.id &&
           other.itemId == this.itemId &&
           other.entryId == this.entryId &&
+          other.title == this.title &&
           other.fireAt == this.fireAt &&
           other.repeatRule == this.repeatRule &&
+          other.earlyReminderMinutes == this.earlyReminderMinutes &&
           other.status == this.status &&
           other.notificationId == this.notificationId);
 }
@@ -1865,8 +1939,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   final Value<String> id;
   final Value<String> itemId;
   final Value<String?> entryId;
+  final Value<String> title;
   final Value<DateTime> fireAt;
   final Value<String> repeatRule;
+  final Value<int> earlyReminderMinutes;
   final Value<String> status;
   final Value<int> notificationId;
   final Value<int> rowid;
@@ -1874,8 +1950,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
     this.entryId = const Value.absent(),
+    this.title = const Value.absent(),
     this.fireAt = const Value.absent(),
     this.repeatRule = const Value.absent(),
+    this.earlyReminderMinutes = const Value.absent(),
     this.status = const Value.absent(),
     this.notificationId = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1884,8 +1962,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     required String id,
     required String itemId,
     this.entryId = const Value.absent(),
+    this.title = const Value.absent(),
     required DateTime fireAt,
     this.repeatRule = const Value.absent(),
+    this.earlyReminderMinutes = const Value.absent(),
     this.status = const Value.absent(),
     required int notificationId,
     this.rowid = const Value.absent(),
@@ -1897,8 +1977,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     Expression<String>? id,
     Expression<String>? itemId,
     Expression<String>? entryId,
+    Expression<String>? title,
     Expression<DateTime>? fireAt,
     Expression<String>? repeatRule,
+    Expression<int>? earlyReminderMinutes,
     Expression<String>? status,
     Expression<int>? notificationId,
     Expression<int>? rowid,
@@ -1907,8 +1989,11 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
       if (entryId != null) 'entry_id': entryId,
+      if (title != null) 'title': title,
       if (fireAt != null) 'fire_at': fireAt,
       if (repeatRule != null) 'repeat_rule': repeatRule,
+      if (earlyReminderMinutes != null)
+        'early_reminder_minutes': earlyReminderMinutes,
       if (status != null) 'status': status,
       if (notificationId != null) 'notification_id': notificationId,
       if (rowid != null) 'rowid': rowid,
@@ -1919,8 +2004,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     Value<String>? id,
     Value<String>? itemId,
     Value<String?>? entryId,
+    Value<String>? title,
     Value<DateTime>? fireAt,
     Value<String>? repeatRule,
+    Value<int>? earlyReminderMinutes,
     Value<String>? status,
     Value<int>? notificationId,
     Value<int>? rowid,
@@ -1929,8 +2016,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       entryId: entryId ?? this.entryId,
+      title: title ?? this.title,
       fireAt: fireAt ?? this.fireAt,
       repeatRule: repeatRule ?? this.repeatRule,
+      earlyReminderMinutes: earlyReminderMinutes ?? this.earlyReminderMinutes,
       status: status ?? this.status,
       notificationId: notificationId ?? this.notificationId,
       rowid: rowid ?? this.rowid,
@@ -1949,11 +2038,17 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     if (entryId.present) {
       map['entry_id'] = Variable<String>(entryId.value);
     }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
     if (fireAt.present) {
       map['fire_at'] = Variable<DateTime>(fireAt.value);
     }
     if (repeatRule.present) {
       map['repeat_rule'] = Variable<String>(repeatRule.value);
+    }
+    if (earlyReminderMinutes.present) {
+      map['early_reminder_minutes'] = Variable<int>(earlyReminderMinutes.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -1973,8 +2068,10 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('entryId: $entryId, ')
+          ..write('title: $title, ')
           ..write('fireAt: $fireAt, ')
           ..write('repeatRule: $repeatRule, ')
+          ..write('earlyReminderMinutes: $earlyReminderMinutes, ')
           ..write('status: $status, ')
           ..write('notificationId: $notificationId, ')
           ..write('rowid: $rowid')
@@ -4926,8 +5023,10 @@ typedef $$RemindersTableCreateCompanionBuilder = RemindersCompanion Function({
   required String id,
   required String itemId,
   Value<String?> entryId,
+  Value<String> title,
   required DateTime fireAt,
   Value<String> repeatRule,
+  Value<int> earlyReminderMinutes,
   Value<String> status,
   required int notificationId,
   Value<int> rowid,
@@ -4936,8 +5035,10 @@ typedef $$RemindersTableUpdateCompanionBuilder = RemindersCompanion Function({
   Value<String> id,
   Value<String> itemId,
   Value<String?> entryId,
+  Value<String> title,
   Value<DateTime> fireAt,
   Value<String> repeatRule,
+  Value<int> earlyReminderMinutes,
   Value<String> status,
   Value<int> notificationId,
   Value<int> rowid,
@@ -4984,6 +5085,11 @@ class $$RemindersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get fireAt => $composableBuilder(
     column: $table.fireAt,
     builder: (column) => ColumnFilters(column),
@@ -4991,6 +5097,11 @@ class $$RemindersTableFilterComposer
 
   ColumnFilters<String> get repeatRule => $composableBuilder(
     column: $table.repeatRule,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get earlyReminderMinutes => $composableBuilder(
+    column: $table.earlyReminderMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5047,6 +5158,11 @@ class $$RemindersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get fireAt => $composableBuilder(
     column: $table.fireAt,
     builder: (column) => ColumnOrderings(column),
@@ -5054,6 +5170,11 @@ class $$RemindersTableOrderingComposer
 
   ColumnOrderings<String> get repeatRule => $composableBuilder(
     column: $table.repeatRule,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get earlyReminderMinutes => $composableBuilder(
+    column: $table.earlyReminderMinutes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5106,11 +5227,19 @@ class $$RemindersTableAnnotationComposer
   GeneratedColumn<String> get entryId =>
       $composableBuilder(column: $table.entryId, builder: (column) => column);
 
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
   GeneratedColumn<DateTime> get fireAt =>
       $composableBuilder(column: $table.fireAt, builder: (column) => column);
 
   GeneratedColumn<String> get repeatRule => $composableBuilder(
     column: $table.repeatRule,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get earlyReminderMinutes => $composableBuilder(
+    column: $table.earlyReminderMinutes,
     builder: (column) => column,
   );
 
@@ -5177,8 +5306,10 @@ class $$RemindersTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> itemId = const Value.absent(),
                 Value<String?> entryId = const Value.absent(),
+                Value<String> title = const Value.absent(),
                 Value<DateTime> fireAt = const Value.absent(),
                 Value<String> repeatRule = const Value.absent(),
+                Value<int> earlyReminderMinutes = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<int> notificationId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5186,8 +5317,10 @@ class $$RemindersTableTableManager
                 id: id,
                 itemId: itemId,
                 entryId: entryId,
+                title: title,
                 fireAt: fireAt,
                 repeatRule: repeatRule,
+                earlyReminderMinutes: earlyReminderMinutes,
                 status: status,
                 notificationId: notificationId,
                 rowid: rowid,
@@ -5197,8 +5330,10 @@ class $$RemindersTableTableManager
                 required String id,
                 required String itemId,
                 Value<String?> entryId = const Value.absent(),
+                Value<String> title = const Value.absent(),
                 required DateTime fireAt,
                 Value<String> repeatRule = const Value.absent(),
+                Value<int> earlyReminderMinutes = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 required int notificationId,
                 Value<int> rowid = const Value.absent(),
@@ -5206,8 +5341,10 @@ class $$RemindersTableTableManager
                 id: id,
                 itemId: itemId,
                 entryId: entryId,
+                title: title,
                 fireAt: fireAt,
                 repeatRule: repeatRule,
+                earlyReminderMinutes: earlyReminderMinutes,
                 status: status,
                 notificationId: notificationId,
                 rowid: rowid,

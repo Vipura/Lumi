@@ -6,16 +6,15 @@ import 'package:flutter/services.dart';
 import 'lumi_themes.dart';
 import 'lumi_tokens.dart';
 
-/// Core Apple-inspired Liquid Glass container built with `ClipRSuperellipse`,
-/// vibrant `BackdropFilter` composition (`ColorFilter.matrix` + Gaussian blur),
-/// multi-stop diagonal specular/caustic rim, inner bevel sheen, and optional
-/// press-scale + light haptic.
+/// Core Apple-inspired Liquid Glass container featuring single-pass optical blur,
+/// hardware fast-path `ClipRRect`, 45-degree opposing corner caustics, inner
+/// optical bevel halo (`.circle-overlay`), and press-scale + light haptic.
 class LumiGlass extends StatefulWidget {
   const LumiGlass({
     super.key,
     required this.child,
     this.borderRadius = LumiRadius.md,
-    this.blur = 16,
+    this.blur = 8,
     this.tintColor,
     this.padding,
     this.margin,
@@ -33,8 +32,8 @@ class LumiGlass extends StatefulWidget {
     this.semanticLabel,
   });
 
-  /// Lightweight translucent content card without `BackdropFilter` or heavy
-  /// per-item blurred shadows so long lists and grids stay locked at 60/120 fps.
+  /// Lightweight translucent content card without `BackdropFilter` or
+  /// per-item CustomPaint shader allocations so long lists stay at 60/120 fps.
   const LumiGlass.card({
     super.key,
     required this.child,
@@ -87,78 +86,27 @@ class LumiGlass extends StatefulWidget {
   State<LumiGlass> createState() => _LumiGlassState();
 }
 
-// Apple Liquid Glass vibrancy saturation matrices (Rec.709 neutral-preserving).
-const ColorFilter _kLightLiquidVibrancy = ColorFilter.matrix(<double>[
-  1.378,
-  -0.343,
-  -0.035,
-  0,
-  5,
-  -0.102,
-  1.137,
-  -0.035,
-  0,
-  5,
-  -0.102,
-  -0.343,
-  1.445,
-  0,
-  5,
-  0,
-  0,
-  0,
-  1,
-  0,
-]);
-
-const ColorFilter _kDarkLiquidVibrancy = ColorFilter.matrix(<double>[
-  1.441,
-  -0.401,
-  -0.040,
-  0,
-  8,
-  -0.119,
-  1.159,
-  -0.040,
-  0,
-  8,
-  -0.119,
-  -0.401,
-  1.520,
-  0,
-  8,
-  0,
-  0,
-  0,
-  1,
-  0,
-]);
-
 class _LumiGlassState extends State<LumiGlass> {
-  static final Map<(bool, int), ImageFilter> _filterCache = {};
+  static final Map<int, ImageFilter> _filterCache = {};
 
   bool _pressed = false;
 
   bool get _interactive => widget.onTap != null || widget.onLongPress != null;
 
-  static ImageFilter _resolveGlassFilter(bool isDark, double sigma) {
-    final step = (sigma * 2).round().clamp(1, 48);
-    final key = (isDark, step);
-    final cached = _filterCache[key];
+  static ImageFilter _resolveGlassFilter(double sigma) {
+    final step = (sigma * 2).round().clamp(1, 20);
+    final cached = _filterCache[step];
     if (cached != null) return cached;
-    if (_filterCache.length > 24) {
+    if (_filterCache.length > 20) {
       _filterCache.clear();
     }
     final clampedSigma = step / 2.0;
-    final built = ImageFilter.compose(
-      outer: ImageFilter.blur(
-        sigmaX: clampedSigma,
-        sigmaY: clampedSigma,
-        tileMode: TileMode.mirror,
-      ),
-      inner: isDark ? _kDarkLiquidVibrancy : _kLightLiquidVibrancy,
+    final built = ImageFilter.blur(
+      sigmaX: clampedSigma,
+      sigmaY: clampedSigma,
+      tileMode: TileMode.mirror,
     );
-    _filterCache[key] = built;
+    _filterCache[step] = built;
     return built;
   }
 
@@ -204,12 +152,11 @@ class _LumiGlassState extends State<LumiGlass> {
       setting: scope?.reduceMotion ?? ext.reduceMotion,
     );
 
-    final isPill = widget.borderRadius >= 100;
     final radius = BorderRadius.circular(widget.borderRadius);
     final effectiveBlur =
         (!widget.useBlur || reduceTransparency || widget.blur <= 0)
         ? 0.0
-        : widget.blur.clamp(0.0, 24.0);
+        : widget.blur.clamp(0.0, 10.0);
 
     final baseTop = widget.elevated
         ? ext.glassElevatedFillTop
@@ -222,13 +169,13 @@ class _LumiGlassState extends State<LumiGlass> {
     var fillTop = tint == null
         ? baseTop
         : Color.alphaBlend(
-            tint.withValues(alpha: widget.elevated ? 0.22 : 0.15),
+            tint.withValues(alpha: widget.elevated ? 0.22 : 0.14),
             baseTop,
           );
     var fillBottom = tint == null
         ? baseBottom
         : Color.alphaBlend(
-            tint.withValues(alpha: widget.elevated ? 0.12 : 0.07),
+            tint.withValues(alpha: widget.elevated ? 0.11 : 0.06),
             baseBottom,
           );
 
@@ -239,7 +186,6 @@ class _LumiGlassState extends State<LumiGlass> {
             ext.glassSolidFallback,
           );
 
-    // Subtle frosted density lift for lightweight cards without BackdropFilter.
     if (effectiveBlur <= 0 && !reduceTransparency) {
       fillTop = Color.lerp(fillTop, solidSurface, isDark ? 0.14 : 0.18)!;
       fillBottom = Color.lerp(fillBottom, solidSurface, isDark ? 0.10 : 0.12)!;
@@ -248,52 +194,34 @@ class _LumiGlassState extends State<LumiGlass> {
     final paintShadow =
         widget.hasShadow ?? (effectiveBlur > 0 || widget.elevated);
 
-    final clipped = isPill
-        ? ClipRRect(
-            borderRadius: radius,
-            child: _buildBackdropOrFallback(
-              context: context,
-              isDark: isDark,
-              isPill: true,
-              effectiveBlur: effectiveBlur,
-              reduceTransparency: reduceTransparency,
-              fillTop: fillTop,
-              fillBottom: fillBottom,
-              solidSurface: solidSurface,
-              ext: ext,
-            ),
-          )
-        : ClipRSuperellipse(
-            borderRadius: radius,
-            child: _buildBackdropOrFallback(
-              context: context,
-              isDark: isDark,
-              isPill: false,
-              effectiveBlur: effectiveBlur,
-              reduceTransparency: reduceTransparency,
-              fillTop: fillTop,
-              fillBottom: fillBottom,
-              solidSurface: solidSurface,
-              ext: ext,
-            ),
-          );
+    final clipped = ClipRRect(
+      borderRadius: radius,
+      child: _buildSurfaceBody(
+        context: context,
+        isDark: isDark,
+        radius: radius,
+        effectiveBlur: effectiveBlur,
+        reduceTransparency: reduceTransparency,
+        fillTop: fillTop,
+        fillBottom: fillBottom,
+        solidSurface: solidSurface,
+        ext: ext,
+      ),
+    );
 
     Widget surface;
     if (paintShadow) {
-      final shadowBlur = widget.elevated ? 18.0 : 10.0;
+      final shadowBlur = widget.elevated ? 14.0 : 8.0;
       final shadowOffset = widget.elevated
-          ? const Offset(0, 8)
-          : const Offset(0, 4);
-      final shape = isPill
-          ? RoundedRectangleBorder(borderRadius: radius)
-          : RoundedSuperellipseBorder(borderRadius: radius);
+          ? const Offset(0, 6)
+          : const Offset(0, 3);
       surface = Container(
         width: widget.width,
         height: widget.height,
         margin: widget.margin,
-        decoration: ShapeDecoration(
-          shape: shape,
-          shadows: [
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: [
             BoxShadow(
               color: ext.glassShadow,
               blurRadius: shadowBlur,
@@ -326,7 +254,7 @@ class _LumiGlassState extends State<LumiGlass> {
         onTap: widget.onTap != null ? _handleTap : null,
         onLongPress: widget.onLongPress != null ? _handleLongPress : null,
         child: AnimatedScale(
-          scale: _pressed && !reduceMotion ? 0.974 : 1.0,
+          scale: _pressed && !reduceMotion ? 0.976 : 1.0,
           duration: reduceMotion ? Duration.zero : LumiMotion.fast,
           curve: LumiMotion.spring,
           child: surface,
@@ -342,17 +270,16 @@ class _LumiGlassState extends State<LumiGlass> {
       );
     }
 
-    // Only isolate repaint boundaries on interactive, blurred, or elevated surfaces.
-    if (effectiveBlur > 0 || widget.elevated || _interactive) {
+    if (effectiveBlur > 0 || widget.elevated) {
       return RepaintBoundary(child: surface);
     }
     return surface;
   }
 
-  Widget _buildBackdropOrFallback({
+  Widget _buildSurfaceBody({
     required BuildContext context,
     required bool isDark,
-    required bool isPill,
+    required BorderRadius radius,
     required double effectiveBlur,
     required bool reduceTransparency,
     required Color fillTop,
@@ -361,21 +288,44 @@ class _LumiGlassState extends State<LumiGlass> {
     required LumiThemeExtension ext,
   }) {
     final isLiquidChrome = effectiveBlur > 0 || widget.elevated;
-    final content = CustomPaint(
-      painter: _LumiBorderPainter(
-        borderRadius: widget.borderRadius,
-        isPill: isPill,
-        isDark: isDark,
-        showOpticalSheen: !reduceTransparency && isLiquidChrome,
-        topLeftColor: ext.glassBorderTopLeft.withValues(
-          alpha: (ext.glassBorderTopLeft.a * widget.borderOpacity).clamp(0, 1),
-        ),
-        bottomRightColor: ext.glassBorderBottomRight.withValues(
-          alpha: (ext.glassBorderBottomRight.a * widget.borderOpacity).clamp(
-            0,
-            1,
+    final topBorder = ext.glassBorderTopLeft.withValues(
+      alpha: (ext.glassBorderTopLeft.a * widget.borderOpacity).clamp(0, 1),
+    );
+    final bottomBorder = ext.glassBorderBottomRight.withValues(
+      alpha: (ext.glassBorderBottomRight.a * widget.borderOpacity).clamp(0, 1),
+    );
+
+    // Fast-path cards use a single BoxDecoration with zero CustomPainter shaders.
+    if (!isLiquidChrome) {
+      return Container(
+        alignment: widget.alignment,
+        padding: widget.padding,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          color: reduceTransparency ? solidSurface : null,
+          gradient: reduceTransparency
+              ? null
+              : LinearGradient(
+                  begin: const Alignment(-0.85, -1.0),
+                  end: const Alignment(0.85, 1.0),
+                  colors: [fillTop, fillBottom],
+                ),
+          border: Border.all(
+            color: Color.lerp(topBorder, bottomBorder, 0.48)!,
+            width: 1.0,
           ),
         ),
+        child: Material(type: MaterialType.transparency, child: widget.child),
+      );
+    }
+
+    final content = CustomPaint(
+      painter: LumiLiquidLensPainter(
+        borderRadius: widget.borderRadius,
+        isDark: isDark,
+        showOpticalSheen: !reduceTransparency,
+        topLeftColor: topBorder,
+        bottomRightColor: bottomBorder,
         innerHighlight: ext.glassInnerHighlight,
       ),
       child: Container(
@@ -398,7 +348,7 @@ class _LumiGlassState extends State<LumiGlass> {
       return content;
     }
 
-    final filter = _resolveGlassFilter(isDark, effectiveBlur);
+    final filter = _resolveGlassFilter(effectiveBlur);
     final useGrouped = widget.grouped && BackdropGroup.of(context) != null;
 
     if (useGrouped) {
@@ -409,10 +359,14 @@ class _LumiGlassState extends State<LumiGlass> {
   }
 }
 
-class _LumiBorderPainter extends CustomPainter {
-  const _LumiBorderPainter({
+/// Paints FreeFrontend-inspired Apple Liquid Glass lens caustics:
+/// 1. Upper dome reflection sheen.
+/// 2. 45-degree opposing bright white corner caustics (`0% -> 25%` & `75% -> 100%`).
+/// 3. Subtle refractive edge contour (`rgba(0,0,0,0.14)` light / crisp halo).
+/// 4. Inner `.circle-overlay` bevel halo (`inset ~4px`).
+class LumiLiquidLensPainter extends CustomPainter {
+  const LumiLiquidLensPainter({
     required this.borderRadius,
-    required this.isPill,
     required this.isDark,
     required this.showOpticalSheen,
     required this.topLeftColor,
@@ -421,114 +375,116 @@ class _LumiBorderPainter extends CustomPainter {
   });
 
   final double borderRadius;
-  final bool isPill;
   final bool isDark;
   final bool showOpticalSheen;
   final Color topLeftColor;
   final Color bottomRightColor;
   final Color innerHighlight;
 
-  void _strokeShape(Canvas canvas, Rect rect, double radiusValue, Paint paint) {
-    if (isPill) {
-      final capsuleRadius = Radius.circular(rect.shortestSide / 2.0);
-      canvas.drawRRect(RRect.fromRectAndRadius(rect, capsuleRadius), paint);
-    } else {
-      canvas.drawRSuperellipse(
-        RSuperellipse.fromRectAndRadius(rect, Radius.circular(radiusValue)),
-        paint,
-      );
-    }
-  }
-
-  void _fillShape(Canvas canvas, Rect rect, double radiusValue, Paint paint) {
-    if (isPill) {
-      final capsuleRadius = Radius.circular(rect.shortestSide / 2.0);
-      canvas.drawRRect(RRect.fromRectAndRadius(rect, capsuleRadius), paint);
-    } else {
-      canvas.drawRSuperellipse(
-        RSuperellipse.fromRectAndRadius(rect, Radius.circular(radiusValue)),
-        paint,
-      );
-    }
+  RRect _rrectFor(Rect rect, double r) {
+    final maxR = rect.shortestSide / 2.0;
+    final effective = r >= 100 ? maxR : r.clamp(0.0, maxR);
+    return RRect.fromRectAndRadius(rect, Radius.circular(effective));
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     final rect = Offset.zero & size;
-    final outerRect = rect.deflate(0.55);
+    final outerRect = rect.deflate(0.6);
 
-    // Subtle upper optical lens dome highlight inside floating glass chrome.
-    if (showOpticalSheen && rect.height >= 24) {
+    if (showOpticalSheen && rect.height >= 20) {
+      // Upper optical dome reflection wash
       final sheenPaint = Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: const Alignment(0, -0.05),
           colors: [
-            Colors.white.withValues(alpha: isDark ? 0.085 : 0.24),
+            Colors.white.withValues(alpha: isDark ? 0.11 : 0.30),
             Colors.white.withValues(alpha: 0.0),
           ],
         ).createShader(rect);
-      _fillShape(canvas, outerRect, borderRadius, sheenPaint);
-    }
+      canvas.drawRRect(_rrectFor(outerRect, borderRadius), sheenPaint);
 
-    // Diagonal multi-stop specular rim + secondary caustic bounce gleam.
-    final midEdge = Color.lerp(
-      topLeftColor,
-      Colors.transparent,
-      isDark ? 0.78 : 0.68,
-    )!;
-    final faintSide = topLeftColor.withValues(alpha: topLeftColor.a * 0.14);
-
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.15
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        stops: const [0.0, 0.26, 0.52, 0.78, 1.0],
-        colors: [
-          topLeftColor,
-          midEdge,
-          faintSide,
-          Color.lerp(bottomRightColor, midEdge, 0.35)!,
-          bottomRightColor,
-        ],
-      ).createShader(rect);
-    _strokeShape(canvas, outerRect, borderRadius, borderPaint);
-
-    // Subtle internal glass edge refraction line along the upper & lower bevel.
-    final insetRect = rect.deflate(1.65);
-    if (insetRect.width > 16 && insetRect.height > 10) {
-      final innerPaint = Paint()
+      // Subtle dark/neutral lower crystal depth rim (inspired by .box:before)
+      final contourPaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
+        ..strokeWidth = 1.0
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          stops: const [0.0, 0.36, 0.78, 1.0],
+          stops: const [0.0, 0.55, 1.0],
+          colors: [
+            Colors.transparent,
+            Colors.transparent,
+            (isDark ? Colors.black : const Color(0xFF0F172A)).withValues(
+              alpha: isDark ? 0.28 : 0.10,
+            ),
+          ],
+        ).createShader(rect);
+      canvas.drawRRect(
+        _rrectFor(rect.deflate(0.35), borderRadius),
+        contourPaint,
+      );
+    }
+
+    // 45° opposing corner caustics (top-left bright <-> middle whisper <-> bottom-right bright)
+    final causticBright = Colors.white.withValues(alpha: isDark ? 0.54 : 0.88);
+    final causticOpposite = Colors.white.withValues(
+      alpha: isDark ? 0.38 : 0.72,
+    );
+    final midWhisper = Color.lerp(
+      topLeftColor,
+      Colors.transparent,
+      isDark ? 0.82 : 0.74,
+    )!;
+
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        stops: const [0.0, 0.22, 0.50, 0.78, 1.0],
+        colors: [
+          Color.lerp(topLeftColor, causticBright, 0.5)!,
+          midWhisper,
+          Colors.white.withValues(alpha: isDark ? 0.05 : 0.10),
+          midWhisper,
+          Color.lerp(bottomRightColor, causticOpposite, 0.55)!,
+        ],
+      ).createShader(rect);
+    canvas.drawRRect(_rrectFor(outerRect, borderRadius), borderPaint);
+
+    // Inner optical .circle-overlay halo
+    final insetRect = rect.deflate(2.2);
+    if (insetRect.width > 16 && insetRect.height > 12) {
+      final innerPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.85
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0.0, 0.38, 0.78, 1.0],
           colors: [
             innerHighlight,
             Colors.transparent,
             Colors.transparent,
             showOpticalSheen
-                ? bottomRightColor.withValues(alpha: bottomRightColor.a * 0.35)
+                ? Colors.white.withValues(alpha: isDark ? 0.14 : 0.28)
                 : Colors.transparent,
           ],
         ).createShader(insetRect);
-      _strokeShape(
-        canvas,
-        insetRect,
-        (borderRadius - 1.1).clamp(0, 999),
+      canvas.drawRRect(
+        _rrectFor(insetRect, (borderRadius - 1.6).clamp(0, 999)),
         innerPaint,
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LumiBorderPainter oldDelegate) {
+  bool shouldRepaint(covariant LumiLiquidLensPainter oldDelegate) {
     return oldDelegate.borderRadius != borderRadius ||
-        oldDelegate.isPill != isPill ||
         oldDelegate.isDark != isDark ||
         oldDelegate.showOpticalSheen != showOpticalSheen ||
         oldDelegate.topLeftColor != topLeftColor ||

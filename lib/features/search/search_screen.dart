@@ -107,8 +107,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ...[
                           (LumiItemType.note, 'Notes'),
                           (LumiItemType.checklist, 'Checklists'),
+                          (LumiItemType.reminder, 'Reminders'),
+                          (LumiItemType.card, 'Plans'),
                           (LumiItemType.sticky, 'Stickies'),
-                          (LumiItemType.card, 'Cards'),
+                          (LumiItemType.calm, 'Calm Space'),
                         ].map(
                           (pair) => Padding(
                             padding: const EdgeInsets.only(
@@ -155,33 +157,42 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 const SizedBox(height: LumiSpacing.xs),
                             itemBuilder: (context, index) {
                               final item = filtered[index];
-                              final isSticky =
-                                  item.type == LumiItemType.sticky.dbValue;
+                              final itemType = LumiItemType.fromDb(item.type);
                               return LumiGlass.card(
                                 onTap: () async {
                                   await ref
                                       .read(settingsControllerProvider.notifier)
                                       .addRecentSearch(_controller.text);
                                   if (!context.mounted) return;
-                                  if (isSticky) {
-                                    context.go('/wall');
-                                  } else {
-                                    unawaited(
-                                      context.push('/editor/${item.id}'),
-                                    );
+                                  switch (itemType) {
+                                    case LumiItemType.sticky:
+                                      context.go('/wall');
+                                    case LumiItemType.reminder:
+                                      context.go('/reminders');
+                                    case LumiItemType.calm:
+                                      unawaited(
+                                        context.push('/calm/${item.id}'),
+                                      );
+                                    default:
+                                      unawaited(
+                                        context.push('/editor/${item.id}'),
+                                      );
                                   }
                                 },
                                 child: Row(
                                   children: [
-                                    Icon(
-                                      isSticky
-                                          ? Icons.sticky_note_2_outlined
-                                          : item.type ==
-                                                LumiItemType.checklist.dbValue
-                                          ? Icons.check_circle_outline_rounded
-                                          : Icons.notes_rounded,
-                                      color: ext.accentColor,
-                                    ),
+                                    Icon(switch (itemType) {
+                                      LumiItemType.sticky =>
+                                        Icons.sticky_note_2_outlined,
+                                      LumiItemType.checklist =>
+                                        Icons.check_circle_outline_rounded,
+                                      LumiItemType.reminder =>
+                                        Icons.alarm_rounded,
+                                      LumiItemType.card =>
+                                        Icons.view_kanban_outlined,
+                                      LumiItemType.calm => Icons.spa_outlined,
+                                      LumiItemType.note => Icons.notes_rounded,
+                                    }, color: ext.accentColor),
                                     const SizedBox(width: LumiSpacing.sm),
                                     Expanded(
                                       child: Column(

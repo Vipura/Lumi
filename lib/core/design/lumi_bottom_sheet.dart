@@ -10,6 +10,7 @@ Future<T?> showLumiGlassBottomSheet<T>({
   required WidgetBuilder builder,
   bool isScrollControlled = true,
   bool useSafeArea = true,
+  bool useRootNavigator = true,
   Color? tintColor,
   String? title,
 }) {
@@ -17,6 +18,7 @@ Future<T?> showLumiGlassBottomSheet<T>({
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
+    useRootNavigator: useRootNavigator,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.36),
     builder: (sheetContext) {
@@ -62,7 +64,7 @@ class LumiGlassSheetContainer extends StatelessWidget {
     final ext = context.lumiTheme;
     return LumiGlass(
       borderRadius: LumiRadius.xl,
-      blur: 20,
+      blur: 8,
       elevated: true,
       grouped: false,
       tintColor: tintColor,

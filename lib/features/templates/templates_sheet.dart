@@ -193,11 +193,22 @@ Future<String> createItemFromTemplate(
   final checklistRepo = ref.read(checklistRepositoryProvider);
   final orgRepo = ref.read(organizationRepositoryProvider);
 
+  String? resolvedCollectionId = template.collectionId;
+  if (resolvedCollectionId != null) {
+    final existingCols = await ref
+        .read(databaseProvider)
+        .organizationDao
+        .getCollections();
+    if (!existingCols.any((c) => c.id == resolvedCollectionId)) {
+      resolvedCollectionId = null;
+    }
+  }
+
   final item = await itemsRepo.createItem(
     type: template.type,
     title: template.name,
     bodyDeltaJson: jsonEncode(template.deltaOps),
-    collectionId: template.collectionId,
+    collectionId: resolvedCollectionId,
     dueDate: dueDate ?? (template.id == 'daily_plan' ? DateTime.now() : null),
   );
 
@@ -210,64 +221,139 @@ Future<String> createItemFromTemplate(
   return item.id;
 }
 
-Future<String?> showTemplatesSheet(BuildContext context, WidgetRef ref) {
+/// Opens a template picker sheet using its own live [Consumer] `WidgetRef`,
+/// preventing disposed-caller `ref` errors when opened after closing another sheet.
+Future<String?> showTemplatesSheet(
+  BuildContext context, [
+  WidgetRef? _,
+  LumiItemType? filterType,
+]) {
   return showLumiGlassBottomSheet<String>(
     context: context,
     title: 'Start from a template',
-    builder: (sheetCtx) {
-      final ext = sheetCtx.lumiTheme;
-      return SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: lumiBuiltInTemplates.map((tpl) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: LumiSpacing.xs),
-              child: LumiGlass.card(
-                onTap: () async {
-                  final id = await createItemFromTemplate(ref, tpl);
-                  if (sheetCtx.mounted) Navigator.of(sheetCtx).pop(id);
-                },
-                padding: const EdgeInsets.all(LumiSpacing.sm),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: tpl.color.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(LumiRadius.sm),
-                      ),
-                      child: Icon(tpl.icon, color: tpl.color, size: 22),
-                    ),
-                    const SizedBox(width: LumiSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tpl.name,
-                            style: Theme.of(sheetCtx).textTheme.titleMedium,
-                          ),
-                          Text(
-                            tpl.subtitle,
-                            style: Theme.of(sheetCtx).textTheme.bodySmall
-                                ?.copyWith(color: ext.inkMuted),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 16,
-                      color: ext.inkMuted,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    },
+    builder: (sheetCtx) => _TemplatesSheetBody(filterType: filterType),
   );
+}
+
+class _TemplatesSheetBody extends ConsumerStatefulWidget {
+  const _TemplatesSheetBody({this.filterType});
+
+  final LumiItemType? filterType;
+
+  @override
+  ConsumerState<_TemplatesSheetBody> createState() =>
+      _TemplatesSheetBodyState();
+}
+
+class _TemplatesSheetBodyState extends ConsumerState<_TemplatesSheetBody> {
+  String? _creatingId;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = context.lumiTheme;
+    final templates = widget.filterType == null
+        ? lumiBuiltInTemplates
+        : lumiBuiltInTemplates
+              .where((t) => t.type == widget.filterType)
+              .toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: templates.map((tpl) {
+          final isBusy = _creatingId == tpl.id;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: LumiSpacing.xs),
+            child: LumiGlass.card(
+              onTap: _creatingId != null
+                  ? null
+                  : () async {
+                      setState(() => _creatingId = tpl.id);
+                      try {
+                        final id = await createItemFromTemplate(ref, tpl);
+                        if (context.mounted) Navigator.of(context).pop(id);
+                      } catch (_) {
+                        if (mounted) setState(() => _creatingId = null);
+                      }
+                    },
+              padding: const EdgeInsets.all(LumiSpacing.sm),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: tpl.color.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(LumiRadius.sm),
+                    ),
+                    child: isBusy
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: tpl.color,
+                            ),
+                          )
+                        : Icon(tpl.icon, color: tpl.color, size: 22),
+                  ),
+                  const SizedBox(width: LumiSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                tpl.name,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: tpl.color.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(
+                                  LumiRadius.pill,
+                                ),
+                              ),
+                              child: Text(
+                                tpl.type == LumiItemType.checklist
+                                    ? 'Checklist'
+                                    : 'Note',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: tpl.color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          tpl.subtitle,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: ext.inkMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: LumiSpacing.xs),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: ext.inkMuted,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 }

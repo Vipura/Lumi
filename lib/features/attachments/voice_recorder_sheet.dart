@@ -14,7 +14,7 @@ import 'attachment_service.dart';
 /// Records a voice note using `record` and attaches it to [itemId].
 Future<Attachment?> showVoiceRecorderSheet({
   required BuildContext context,
-  required WidgetRef ref,
+  WidgetRef? ref,
   required String itemId,
 }) {
   return showLumiGlassBottomSheet<Attachment>(

@@ -115,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          SwitchListTile.adaptive(
+                          LumiGlassSwitchTile(
                             title: const Text('Reduce transparency'),
                             subtitle: const Text(
                               'Use solid tinted surfaces instead of live blur',
@@ -126,7 +126,7 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                           ),
                           const Divider(height: 1),
-                          SwitchListTile.adaptive(
+                          LumiGlassSwitchTile(
                             title: const Text('Reduce motion'),
                             subtitle: const Text(
                               'Calm background drift and transitions',
@@ -136,7 +136,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ctrl.update((s) => s.copyWith(reduceMotion: v)),
                           ),
                           const Divider(height: 1),
-                          SwitchListTile.adaptive(
+                          LumiGlassSwitchTile(
                             title: const Text('Haptic feedback'),
                             subtitle: const Text(
                               'Gentle taps on checklist and glass actions',
@@ -155,7 +155,7 @@ class SettingsScreen extends ConsumerWidget {
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          SwitchListTile.adaptive(
+                          LumiGlassSwitchTile(
                             title: const Text('Biometric lock'),
                             subtitle: Text(
                               (kIsWeb ||
@@ -231,79 +231,95 @@ class SettingsScreen extends ConsumerWidget {
                                 ?.copyWith(color: ext.inkMuted),
                           ),
                           const SizedBox(height: LumiSpacing.md),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: LumiGlassButton(
-                                  label: 'Export Backup (.zip)',
-                                  primary: true,
-                                  icon: Icons.download_rounded,
-                                  onPressed: () async {
-                                    try {
-                                      final count = await ref
-                                          .read(backupExportServiceProvider)
-                                          .exportFullBackupZip();
-                                      if (context.mounted && count != null) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Exported $count items to backup archive.',
-                                            ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final stackVert = constraints.maxWidth < 360;
+                              final exportBtn = LumiGlassButton(
+                                label: 'Export Backup (.zip)',
+                                primary: true,
+                                expanded: stackVert,
+                                icon: Icons.download_rounded,
+                                onPressed: () async {
+                                  try {
+                                    final count = await ref
+                                        .read(backupExportServiceProvider)
+                                        .exportFullBackupZip();
+                                    if (context.mounted && count != null) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Exported $count items to backup archive.',
                                           ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Export failed: $e'),
-                                          ),
-                                        );
-                                      }
+                                        ),
+                                      );
                                     }
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: LumiSpacing.xs),
-                              Expanded(
-                                child: LumiGlassButton(
-                                  label: 'Restore (.zip)',
-                                  icon: Icons.upload_rounded,
-                                  onPressed: () async {
-                                    try {
-                                      final restored = await ref
-                                          .read(backupExportServiceProvider)
-                                          .restoreBackupFromPicker();
-                                      if (context.mounted && restored > 0) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Restored $restored items from backup.',
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Restore failed: $e'),
-                                          ),
-                                        );
-                                      }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Export failed: $e'),
+                                        ),
+                                      );
                                     }
-                                  },
-                                ),
-                              ),
-                            ],
+                                  }
+                                },
+                              );
+                              final restoreBtn = LumiGlassButton(
+                                label: 'Restore (.zip)',
+                                expanded: stackVert,
+                                icon: Icons.upload_rounded,
+                                onPressed: () async {
+                                  try {
+                                    final restored = await ref
+                                        .read(backupExportServiceProvider)
+                                        .restoreBackupFromPicker();
+                                    if (context.mounted && restored > 0) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Restored $restored items from backup.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Restore failed: $e'),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              );
+                              if (stackVert) {
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    exportBtn,
+                                    const SizedBox(height: LumiSpacing.xs),
+                                    restoreBtn,
+                                  ],
+                                );
+                              }
+                              return Row(
+                                children: [
+                                  Expanded(child: exportBtn),
+                                  const SizedBox(width: LumiSpacing.xs),
+                                  Expanded(child: restoreBtn),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -322,6 +338,21 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () => context.push('/design-gallery'),
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(Icons.explore_outlined),
+                            title: const Text('Replay interactive tour'),
+                            subtitle: const Text(
+                              'Walk through Today, Notes, Checklists, Reminders & Plan',
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () async {
+                              await ctrl.update(
+                                (s) => s.copyWith(tourCompleted: false),
+                              );
+                              if (context.mounted) context.go('/today');
+                            },
                           ),
                           const Divider(height: 1),
                           ListTile(

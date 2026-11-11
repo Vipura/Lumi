@@ -122,7 +122,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
-    final summaries = ref.watch(itemSummariesProvider);
+    final summaries = ref.watch(notesSummariesProvider);
     final collections = ref.watch(collectionsStreamProvider).value ?? const [];
     final tags = ref.watch(tagsStreamProvider).value ?? const [];
     final ext = context.lumiTheme;
@@ -169,7 +169,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         const SizedBox(width: LumiSpacing.xs),
                         LumiGlass(
                           borderRadius: LumiRadius.pill,
-                          blur: 16,
+                          useBlur: false,
+                          blur: 0,
+                          elevated: true,
+                          hasShadow: false,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 4,
                             vertical: 3,
@@ -212,6 +215,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                                   final id = await showTemplatesSheet(
                                     context,
                                     ref,
+                                    LumiItemType.note,
                                   );
                                   if (id != null && context.mounted) {
                                     unawaited(context.push('/editor/$id'));
@@ -346,7 +350,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   child: LumiEmptyState(
                     icon: Icons.notes_rounded,
                     title: 'No notes here yet',
-                    subtitle: 'Capture a thought, checklist, or start from a template.',
+                    subtitle:
+                        'Capture rich notes, voice memos, or photos here.',
                     actionLabel: 'New Note',
                     onAction: _createNote,
                   ),

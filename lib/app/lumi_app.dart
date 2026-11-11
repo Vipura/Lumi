@@ -4,7 +4,9 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/design/design_system.dart';
+import '../data/repositories/lumi_models.dart';
 import '../data/repositories/providers.dart';
+import '../features/reminders/foreground_alarm_coordinator.dart';
 import '../features/reminders/notification_service.dart';
 import '../features/settings/biometric_lock_gate.dart';
 import 'lumi_router.dart';
@@ -31,9 +33,17 @@ class _LumiAppState extends ConsumerState<LumiApp> {
       await ref
           .read(notificationServiceProvider)
           .initialize(
-            onNotificationTap: (payload) {
-              if (payload != null && payload.isNotEmpty) {
-                router.push('/editor/$payload');
+            onNotificationTap: (payload) async {
+              if (payload == null || payload.isEmpty) return;
+              final item = await ref
+                  .read(itemsRepositoryProvider)
+                  .getItem(payload);
+              if (item?.type == LumiItemType.reminder.dbValue) {
+                router.go('/reminders');
+              } else if (item?.type == LumiItemType.calm.dbValue) {
+                await router.push('/calm/$payload');
+              } else {
+                await router.push('/editor/$payload');
               }
             },
           );
@@ -106,8 +116,11 @@ class _LumiAppState extends ConsumerState<LumiApp> {
           FlutterQuillLocalizations.delegate,
         ],
         supportedLocales: FlutterQuillLocalizations.supportedLocales,
-        builder: (context, child) =>
-            BiometricLockGate(child: child ?? const SizedBox.shrink()),
+        builder: (context, child) => BiometricLockGate(
+          child: ForegroundAlarmCoordinator(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
       ),
     );
   }

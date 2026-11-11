@@ -6,7 +6,9 @@ enum LumiItemType {
   note('note'),
   checklist('checklist'),
   sticky('sticky'),
-  card('card');
+  card('card'),
+  reminder('reminder'),
+  calm('calm');
 
   const LumiItemType(this.dbValue);
   final String dbValue;
@@ -20,7 +22,7 @@ enum LumiItemType {
 }
 
 enum LumiBoardStatus {
-  todo('todo', 'To do'),
+  todo('todo', 'To Do'),
   doing('doing', 'Doing'),
   done('done', 'Done');
 
@@ -50,6 +52,33 @@ enum LumiRepeatRule {
     return values.firstWhere(
       (e) => e.dbValue == value,
       orElse: () => LumiRepeatRule.none,
+    );
+  }
+}
+
+enum LumiEarlyReminder {
+  none(0, 'At event time', 'None'),
+  min5(5, '5 minutes before', '5m early'),
+  min10(10, '10 minutes before', '10m early'),
+  min15(15, '15 minutes before', '15m early'),
+  min30(30, '30 minutes before', '30m early'),
+  hour1(60, '1 hour before', '1h early'),
+  hour2(120, '2 hours before', '2h early'),
+  day1(1440, '1 day before', '1d early'),
+  day2(2880, '2 days before', '2d early'),
+  week1(10080, '1 week before', '1w early'),
+  week2(20160, '2 weeks before', '2w early'),
+  month1(43200, '1 month before', '1mo early');
+
+  const LumiEarlyReminder(this.minutes, this.label, this.shortLabel);
+  final int minutes;
+  final String label;
+  final String shortLabel;
+
+  static LumiEarlyReminder fromMinutes(int minutes) {
+    return values.firstWhere(
+      (e) => e.minutes == minutes,
+      orElse: () => LumiEarlyReminder.none,
     );
   }
 }

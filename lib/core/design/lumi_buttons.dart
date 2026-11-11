@@ -5,7 +5,7 @@ import 'lumi_glass.dart';
 import 'lumi_themes.dart';
 import 'lumi_tokens.dart';
 
-/// Primary or frosted glass action button with >=48dp accessible hit target.
+/// Primary or frosted Liquid Glass action button with >=48dp accessible hit target.
 class LumiGlassButton extends StatelessWidget {
   const LumiGlassButton({
     super.key,
@@ -85,6 +85,8 @@ class LumiGlassButton extends StatelessWidget {
             onTap: enabled ? onPressed : null,
             tintColor: tintColor,
             borderRadius: borderRadius,
+            useBlur: false,
+            blur: 0,
             elevated: true,
             padding: const EdgeInsets.symmetric(
               horizontal: LumiSpacing.lg,
@@ -97,6 +99,172 @@ class LumiGlassButton extends StatelessWidget {
           );
 
     return Opacity(opacity: enabled ? 1.0 : 0.55, child: widget);
+  }
+}
+
+/// FreeFrontend-inspired Apple Liquid Glass Lens CTA pill featuring an optical
+/// translucent lens capsule, 45-degree corner caustics, inner bevel halo, and
+/// circular trailing icon badge (`.start-btn` + `.btn-icon`).
+class LumiGlassLensButton extends StatefulWidget {
+  const LumiGlassLensButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon = Icons.arrow_forward_rounded,
+    this.tintColor,
+    this.compact = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final Color? tintColor;
+  final bool compact;
+
+  @override
+  State<LumiGlassLensButton> createState() => _LumiGlassLensButtonState();
+}
+
+class _LumiGlassLensButtonState extends State<LumiGlassLensButton> {
+  bool _pressed = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = context.lumiTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scope = LumiDesignScope.maybeOf(context);
+    final reduceTransparency =
+        scope?.reduceTransparency ?? ext.reduceTransparency;
+    final reduceMotion = LumiMotion.shouldReduceMotion(
+      context,
+      setting: scope?.reduceMotion ?? ext.reduceMotion,
+    );
+
+    final badgeColor = widget.tintColor ?? (isDark ? Colors.white : ext.ink);
+    final badgeIconColor = widget.tintColor != null
+        ? Colors.white
+        : (isDark ? LumiColors.darkCanvas : Colors.white);
+
+    final scale = _pressed && !reduceMotion
+        ? 0.94
+        : (_hovered && !reduceMotion ? 1.018 : 1.0);
+
+    return Semantics(
+      button: widget.onPressed != null,
+      label: widget.label,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTapDown: widget.onPressed == null
+              ? null
+              : (_) => setState(() => _pressed = true),
+          onTapUp: widget.onPressed == null
+              ? null
+              : (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTap: widget.onPressed == null
+              ? null
+              : () {
+                  if (scope?.hapticsEnabled ?? true) {
+                    HapticFeedback.lightImpact();
+                  }
+                  widget.onPressed?.call();
+                },
+          child: AnimatedScale(
+            scale: scale,
+            duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+            curve: LumiMotion.spring,
+            child: Opacity(
+              opacity: widget.onPressed == null ? 0.55 : 1.0,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  widget.compact ? 14 : 18,
+                  widget.compact ? 6 : 8,
+                  widget.compact ? 6 : 8,
+                  widget.compact ? 6 : 8,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(LumiRadius.pill),
+                  color: reduceTransparency
+                      ? ext.glassSolidFallback
+                      : (isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.white.withValues(alpha: 0.34)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.30 : 0.12,
+                      ),
+                      blurRadius: _hovered ? 14 : 9,
+                      offset: Offset(0, _hovered ? 5 : 3),
+                      spreadRadius: -2,
+                    ),
+                  ],
+                ),
+                child: CustomPaint(
+                  painter: LumiLiquidLensPainter(
+                    borderRadius: LumiRadius.pill,
+                    isDark: isDark,
+                    showOpticalSheen: !reduceTransparency,
+                    topLeftColor: ext.glassBorderTopLeft,
+                    bottomRightColor: ext.glassBorderBottomRight,
+                    innerHighlight: ext.glassInnerHighlight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            widget.label,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: ext.ink,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                        SizedBox(width: widget.compact ? 8 : 12),
+                        AnimatedScale(
+                          scale: _hovered && !reduceMotion ? 1.08 : 1.0,
+                          duration: reduceMotion
+                              ? Duration.zero
+                              : LumiMotion.fast,
+                          child: Container(
+                            width: widget.compact ? 30 : 34,
+                            height: widget.compact ? 30 : 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: badgeColor,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: badgeColor.withValues(alpha: 0.30),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              widget.icon,
+                              size: widget.compact ? 16 : 18,
+                              color: badgeIconColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -127,11 +295,8 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
       context,
       setting: scope?.reduceMotion ?? false,
     );
-    final isPill = widget.borderRadius >= 100;
     final radius = BorderRadius.circular(widget.borderRadius);
-    final shape = isPill
-        ? RoundedRectangleBorder(borderRadius: radius)
-        : RoundedSuperellipseBorder(borderRadius: radius);
+    final shape = RoundedRectangleBorder(borderRadius: radius);
 
     final innerContent = Stack(
       children: [
@@ -174,10 +339,6 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
       ],
     );
 
-    final clipped = isPill
-        ? ClipRRect(borderRadius: radius, child: innerContent)
-        : ClipRSuperellipse(borderRadius: radius, child: innerContent);
-
     return RepaintBoundary(
       child: GestureDetector(
         onTapDown: widget.onTap == null
@@ -204,31 +365,23 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
               shape: shape,
               shadows: [
                 BoxShadow(
-                  color: widget.accent.withValues(alpha: 0.34),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
+                  color: widget.accent.withValues(alpha: 0.32),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
                   spreadRadius: -3,
                 ),
               ],
             ),
             foregroundDecoration: ShapeDecoration(
-              shape: isPill
-                  ? RoundedRectangleBorder(
-                      borderRadius: radius,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.48),
-                        width: 1,
-                      ),
-                    )
-                  : RoundedSuperellipseBorder(
-                      borderRadius: radius,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.48),
-                        width: 1,
-                      ),
-                    ),
+              shape: RoundedRectangleBorder(
+                borderRadius: radius,
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.48),
+                  width: 1,
+                ),
+              ),
             ),
-            child: clipped,
+            child: ClipRRect(borderRadius: radius, child: innerContent),
           ),
         ),
       ),
@@ -303,7 +456,7 @@ class LumiGlassIconButton extends StatelessWidget {
             width: size,
             height: size,
             borderRadius: LumiRadius.pill,
-            blur: 16,
+            blur: 6,
             tintColor: tintColor,
             useBlur: useBlur,
             grouped: grouped,
@@ -407,12 +560,12 @@ class _GroupedCapsuleIconButtonState extends State<_GroupedCapsuleIconButton> {
   }
 }
 
-/// Prominent Liquid Glass "+" capture orb used in the floating bottom bar.
+/// Prominent Liquid Glass Lens "+" capture orb styled after FreeFrontend `.box`.
 class LumiCaptureFab extends StatefulWidget {
   const LumiCaptureFab({
     super.key,
     required this.onTap,
-    this.size = 56,
+    this.size = 54,
     this.tooltip = 'Quick capture',
   });
 
@@ -463,68 +616,44 @@ class _LumiCaptureFabState extends State<LumiCaptureFab> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: ext.accentColor.withValues(alpha: 0.44),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      color: ext.accentColor.withValues(alpha: 0.42),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
                       spreadRadius: -2,
                     ),
                   ],
                 ),
                 child: ClipOval(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color.lerp(ext.accentColor, Colors.white, 0.30)!,
-                              ext.accentColor,
-                              Color.lerp(ext.accentColor, Colors.black, 0.12)!,
-                            ],
-                          ),
+                  child: CustomPaint(
+                    painter: LumiLiquidLensPainter(
+                      borderRadius: LumiRadius.pill,
+                      isDark: false,
+                      showOpticalSheen: true,
+                      topLeftColor: Colors.white.withValues(alpha: 0.95),
+                      bottomRightColor: Colors.white.withValues(alpha: 0.72),
+                      innerHighlight: Colors.white.withValues(alpha: 0.55),
+                    ),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color.lerp(ext.accentColor, Colors.white, 0.30)!,
+                            ext.accentColor,
+                            Color.lerp(ext.accentColor, Colors.black, 0.14)!,
+                          ],
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: FractionallySizedBox(
-                          heightFactor: 0.54,
-                          widthFactor: 0.86,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(999),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.42),
-                                  Colors.white.withValues(alpha: 0.0),
-                                ],
-                              ),
-                            ),
-                          ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: 28,
                         ),
                       ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.78),
-                            width: 1.35,
-                          ),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.add_rounded,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),

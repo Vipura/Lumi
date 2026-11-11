@@ -20,6 +20,20 @@ abstract final class ReminderScheduleLogic {
     return referenceNow.add(offset);
   }
 
+  static DateTime? computeEarlyFireAt(
+    DateTime fireAt,
+    LumiEarlyReminder early,
+  ) {
+    return switch (early) {
+      LumiEarlyReminder.none => null,
+      LumiEarlyReminder.month1 => _subtractOneMonthClamped(fireAt),
+      _ => fireAt.subtract(Duration(minutes: early.minutes)),
+    };
+  }
+
+  static int earlyNotificationIdFor(String reminderId) =>
+      DeltaUtils.deterministicNotificationId('${reminderId}_early');
+
   static DateTime _addOneMonthClamped(DateTime dt) {
     final nextMonth = dt.month == 12 ? 1 : dt.month + 1;
     final nextYear = dt.month == 12 ? dt.year + 1 : dt.year;
@@ -34,18 +48,44 @@ abstract final class ReminderScheduleLogic {
       dt.second,
     );
   }
+
+  static DateTime _subtractOneMonthClamped(DateTime dt) {
+    final prevMonth = dt.month == 1 ? 12 : dt.month - 1;
+    final prevYear = dt.month == 1 ? dt.year - 1 : dt.year;
+    final maxDaysInMonth = DateTime(prevYear, prevMonth + 1, 0).day;
+    final clampedDay = dt.day > maxDaysInMonth ? maxDaysInMonth : dt.day;
+    return DateTime(
+      prevYear,
+      prevMonth,
+      clampedDay,
+      dt.hour,
+      dt.minute,
+      dt.second,
+    );
+  }
 }
 
 abstract interface class RemindersRepository {
   Stream<List<Reminder>> watchScheduledReminders();
+  Stream<List<Reminder>> watchAllNonCancelledReminders();
   Stream<List<Reminder>> watchRemindersForItem(String itemId);
   Stream<List<Reminder>> watchRemindersForDay(DateTime day);
 
   Future<Reminder> scheduleReminder({
     required String itemId,
     String? entryId,
+    String title = '',
     required DateTime fireAt,
     LumiRepeatRule repeatRule = LumiRepeatRule.none,
+    int earlyReminderMinutes = 0,
+  });
+
+  Future<Reminder?> updateReminder({
+    required String id,
+    String? title,
+    required DateTime fireAt,
+    LumiRepeatRule? repeatRule,
+    int? earlyReminderMinutes,
   });
 
   Future<Reminder?> snoozeReminder(String id, Duration offset, {DateTime? now});
@@ -66,6 +106,10 @@ class DriftRemindersRepository implements RemindersRepository {
       _db.remindersDao.watchScheduledReminders();
 
   @override
+  Stream<List<Reminder>> watchAllNonCancelledReminders() =>
+      _db.remindersDao.watchAllNonCancelledReminders();
+
+  @override
   Stream<List<Reminder>> watchRemindersForItem(String itemId) =>
       _db.remindersDao.watchRemindersForItem(itemId);
 
@@ -77,8 +121,10 @@ class DriftRemindersRepository implements RemindersRepository {
   Future<Reminder> scheduleReminder({
     required String itemId,
     String? entryId,
+    String title = '',
     required DateTime fireAt,
     LumiRepeatRule repeatRule = LumiRepeatRule.none,
+    int earlyReminderMinutes = 0,
   }) async {
     final id = _uuid.v4();
     final notificationId = DeltaUtils.deterministicNotificationId(id);
@@ -88,13 +134,59 @@ class DriftRemindersRepository implements RemindersRepository {
         id: id,
         itemId: itemId,
         entryId: Value(entryId),
+        title: Value(title.trim()),
         fireAt: fireAt,
         repeatRule: Value(repeatRule.dbValue),
+        earlyReminderMinutes: Value(earlyReminderMinutes),
         status: Value(LumiReminderStatus.scheduled.dbValue),
         notificationId: notificationId,
       ),
     );
     return (await _db.remindersDao.getById(id))!;
+  }
+
+  @override
+  Future<Reminder?> updateReminder({
+    required String id,
+    String? title,
+    required DateTime fireAt,
+    LumiRepeatRule? repeatRule,
+    int? earlyReminderMinutes,
+  }) async {
+    final existing = await _db.remindersDao.getById(id);
+    if (existing == null) return null;
+
+    await _db.remindersDao.updateReminder(
+      id,
+      RemindersCompanion(
+        title: title != null ? Value(title.trim()) : const Value.absent(),
+        fireAt: Value(fireAt),
+        repeatRule: repeatRule != null
+            ? Value(repeatRule.dbValue)
+            : const Value.absent(),
+        earlyReminderMinutes: earlyReminderMinutes != null
+            ? Value(earlyReminderMinutes)
+            : const Value.absent(),
+        status: Value(LumiReminderStatus.scheduled.dbValue),
+      ),
+    );
+
+    if (title != null) {
+      final parent = await _db.itemsDao.getItemById(existing.itemId);
+      if (parent != null && parent.type == LumiItemType.reminder.dbValue) {
+        await _db.itemsDao.upsertItem(
+          parent
+              .toCompanion(true)
+              .copyWith(
+                title: Value(title.trim()),
+                dueDate: Value(fireAt),
+                updatedAt: Value(DateTime.now()),
+              ),
+        );
+      }
+    }
+
+    return _db.remindersDao.getById(id);
   }
 
   @override

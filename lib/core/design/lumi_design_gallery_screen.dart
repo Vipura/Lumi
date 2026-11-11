@@ -28,6 +28,8 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
   bool _reduceTransparency = false;
   bool _reduceMotion = false;
   double _progress = 0.68;
+  bool _lensToggleA = true;
+  bool _lensToggleB = false;
   final Set<String> _selectedTags = {'Focus', 'Design'};
 
   @override
@@ -289,7 +291,7 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                                               .titleMedium,
                                         ),
                                         Text(
-                                          '16px vibrancy blur • specular + caustic rim • inner bevel',
+                                          'Optical lens caustics • inner bevel halo • crisp contrast',
                                           style: Theme.of(scopedContext)
                                               .textTheme
                                               .bodySmall,
@@ -307,6 +309,59 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                                 style: Theme.of(scopedContext)
                                     .textTheme
                                     .bodyMedium,
+                              ),
+                            ),
+                            const SizedBox(height: LumiSpacing.lg),
+                            const _SectionHeader(
+                              'Liquid Glass Switches & Lens Controls',
+                            ),
+                            LumiGlass.card(
+                              padding: const EdgeInsets.all(LumiSpacing.md),
+                              child: Wrap(
+                                spacing: LumiSpacing.lg,
+                                runSpacing: LumiSpacing.sm,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      LumiGlassSwitch(
+                                        value: _lensToggleA,
+                                        onChanged: (v) =>
+                                            setState(() => _lensToggleA = v),
+                                      ),
+                                      const SizedBox(width: LumiSpacing.xs),
+                                      Text(
+                                        _lensToggleA ? 'Glass Active' : 'Muted',
+                                        style: Theme.of(scopedContext)
+                                            .textTheme
+                                            .bodyMedium,
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      LumiGlassSwitch(
+                                        value: _lensToggleB,
+                                        activeColor: LumiColors.success,
+                                        onChanged: (v) =>
+                                            setState(() => _lensToggleB = v),
+                                      ),
+                                      const SizedBox(width: LumiSpacing.xs),
+                                      Text(
+                                        'Optic Green',
+                                        style: Theme.of(scopedContext)
+                                            .textTheme
+                                            .bodyMedium,
+                                      ),
+                                    ],
+                                  ),
+                                  LumiGlassLensButton(
+                                    label: 'Get started',
+                                    onPressed: () {},
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: LumiSpacing.lg),
@@ -400,15 +455,6 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                                     ),
                                   )
                                   .toList(),
-                            ),
-                            const SizedBox(height: LumiSpacing.lg),
-                            const _SectionHeader('Empty State Component'),
-                            LumiEmptyState(
-                              icon: Icons.wb_sunny_outlined,
-                              title: 'A calm space awaits',
-                              subtitle: 'Tap the glowing capture button below to jot a quick thought in under two seconds.',
-                              actionLabel: 'Create Note',
-                              onAction: () {},
                             ),
                           ],
                         ),

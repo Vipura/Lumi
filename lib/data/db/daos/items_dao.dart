@@ -117,7 +117,7 @@ class ItemsDao extends DatabaseAccessor<LumiDatabase> with _$ItemsDaoMixin {
             (t) =>
                 t.deletedAt.isNull() &
                 t.archived.equals(false) &
-                t.type.isIn(const ['card', 'checklist', 'note']),
+                t.type.equals('card'),
           )
           ..orderBy([
             (t) => OrderingTerm(expression: t.pinned, mode: OrderingMode.desc),
@@ -279,8 +279,7 @@ class ItemsDao extends DatabaseAccessor<LumiDatabase> with _$ItemsDaoMixin {
 
   String? _buildFtsQuery(String raw) {
     final tokens = raw
-        .split(RegExp(r'\s+'))
-        .map((t) => t.replaceAll(RegExp(r'[^\p{L}\p{N}_]', unicode: true), ''))
+        .split(RegExp(r'[^\p{L}\p{N}_]+', unicode: true))
         .where((t) => t.isNotEmpty)
         .toList();
     if (tokens.isEmpty) return null;

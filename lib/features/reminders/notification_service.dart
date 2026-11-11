@@ -9,13 +9,14 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/db/lumi_database.dart';
 import '../../data/repositories/lumi_models.dart';
+import '../../data/repositories/reminders_repository.dart';
 
 final notificationServiceProvider = Provider<LumiNotificationService>(
   (ref) => LumiNotificationService(),
 );
 
-/// Handles local reminder notifications across iOS, Android 13+, macOS, Linux,
-/// Windows, and Web.
+/// Handles local alarm & early reminder notifications across iOS, Android,
+/// macOS, Linux, Windows, and Web.
 class LumiNotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -130,6 +131,114 @@ class LumiNotificationService {
     return true;
   }
 
+  NotificationDetails _alarmDetails() {
+    final androidDetails = AndroidNotificationDetails(
+      'lumi_alarms_v2',
+      'Lumi Reminder Alarms',
+      channelDescription:
+          'High-priority alarm alerts when a Lumi reminder reaches its time',
+      importance: Importance.max,
+      priority: Priority.max,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      fullScreenIntent: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList(const [0, 450, 220, 450, 220, 600]),
+      // FLAG_INSISTENT (4): repeat alarm sound until acknowledged.
+      additionalFlags: Int32List.fromList(const [4]),
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
+    );
+    const linuxDetails = LinuxNotificationDetails(
+      urgency: LinuxNotificationUrgency.critical,
+    );
+    final windowsDetails = WindowsNotificationDetails(
+      scenario: WindowsNotificationScenario.alarm,
+      duration: WindowsNotificationDuration.long,
+      audio: WindowsNotificationAudio.preset(
+        sound: WindowsNotificationSound.alarm1,
+        shouldLoop: true,
+      ),
+    );
+    return NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+      linux: linuxDetails,
+      windows: windowsDetails,
+    );
+  }
+
+  NotificationDetails _earlyReminderDetails() {
+    const androidDetails = AndroidNotificationDetails(
+      'lumi_reminders',
+      'Lumi Early Reminders',
+      channelDescription: 'Heads-up alerts before scheduled reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const linuxDetails = LinuxNotificationDetails(
+      urgency: LinuxNotificationUrgency.normal,
+    );
+    final windowsDetails = WindowsNotificationDetails(
+      audio: WindowsNotificationAudio.preset(
+        sound: WindowsNotificationSound.reminder,
+      ),
+    );
+    return NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+      linux: linuxDetails,
+      windows: windowsDetails,
+    );
+  }
+
+  Future<void> _zonedScheduleWithFallback({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails details,
+    required String payload,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: payload,
+        matchDateTimeComponents: matchDateTimeComponents,
+      );
+    } catch (_) {
+      try {
+        await _plugin.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: scheduledDate,
+          notificationDetails: details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: payload,
+          matchDateTimeComponents: matchDateTimeComponents,
+        );
+      } catch (_) {}
+    }
+  }
+
   Future<void> scheduleForReminder({
     required Reminder reminder,
     required String title,
@@ -137,6 +246,15 @@ class LumiNotificationService {
   }) async {
     await initialize();
     if (kIsWeb) return;
+
+    final resolvedTitle = reminder.title.trim().isNotEmpty
+        ? reminder.title.trim()
+        : (title.trim().isNotEmpty ? title.trim() : 'Lumi Reminder');
+
+    final early = LumiEarlyReminder.fromMinutes(reminder.earlyReminderMinutes);
+    final earlyId = ReminderScheduleLogic.earlyNotificationIdFor(reminder.id);
+    await cancelReminder(earlyId);
+
     if (!reminder.fireAt.isAfter(DateTime.now())) return;
 
     final scheduled = tz.TZDateTime.from(reminder.fireAt, tz.local);
@@ -148,54 +266,62 @@ class LumiNotificationService {
       LumiRepeatRule.monthly => DateTimeComponents.dayOfMonthAndTime,
     };
 
-    const androidDetails = AndroidNotificationDetails(
-      'lumi_reminders',
-      'Lumi Reminders',
-      channelDescription: 'Scheduled reminders for Lumi notes and checklists',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const darwinDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    const linuxDetails = LinuxNotificationDetails();
-    const windowsDetails = WindowsNotificationDetails();
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
-      linux: linuxDetails,
-      windows: windowsDetails,
+    await _zonedScheduleWithFallback(
+      id: reminder.notificationId,
+      title: resolvedTitle,
+      body: body ?? 'Reminder alarm • Tap to open Lumi',
+      scheduledDate: scheduled,
+      details: _alarmDetails(),
+      payload: reminder.itemId,
+      matchDateTimeComponents: matchComponents,
     );
 
-    try {
-      await _plugin.zonedSchedule(
-        id: reminder.notificationId,
-        title: title.isEmpty ? 'Lumi Reminder' : title,
-        body: body ?? 'Tap to view in Lumi',
-        scheduledDate: scheduled,
-        notificationDetails: details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: reminder.itemId,
-        matchDateTimeComponents: matchComponents,
+    if (early != LumiEarlyReminder.none) {
+      final earlyAt = ReminderScheduleLogic.computeEarlyFireAt(
+        reminder.fireAt,
+        early,
       );
-    } catch (_) {
-      // Fallback if exact alarm permission is denied on Android 14+.
-      try {
-        await _plugin.zonedSchedule(
-          id: reminder.notificationId,
-          title: title.isEmpty ? 'Lumi Reminder' : title,
-          body: body ?? 'Tap to view in Lumi',
-          scheduledDate: scheduled,
-          notificationDetails: details,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      if (earlyAt != null && earlyAt.isAfter(DateTime.now())) {
+        await _zonedScheduleWithFallback(
+          id: earlyId,
+          title: 'Upcoming: $resolvedTitle',
+          body: 'Scheduled in ${early.label}',
+          scheduledDate: tz.TZDateTime.from(earlyAt, tz.local),
+          details: _earlyReminderDetails(),
           payload: reminder.itemId,
-          matchDateTimeComponents: matchComponents,
         );
-      } catch (_) {}
+      }
     }
+  }
+
+  /// Displays an immediate native alarm notification (used when a timer fires
+  /// in-app or across desktop hosts without background wake alarms).
+  Future<void> showAlarmNow({
+    required Reminder reminder,
+    required String title,
+    String? body,
+  }) async {
+    await initialize();
+    if (kIsWeb) return;
+    final resolvedTitle = reminder.title.trim().isNotEmpty
+        ? reminder.title.trim()
+        : (title.trim().isNotEmpty ? title.trim() : 'Lumi Alarm');
+    try {
+      await _plugin.show(
+        id: reminder.notificationId,
+        title: resolvedTitle,
+        body: body ?? 'Time for your scheduled reminder',
+        notificationDetails: _alarmDetails(),
+        payload: reminder.itemId,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> cancelReminderAndEarly(Reminder reminder) async {
+    await cancelReminder(reminder.notificationId);
+    await cancelReminder(
+      ReminderScheduleLogic.earlyNotificationIdFor(reminder.id),
+    );
   }
 
   Future<void> cancelReminder(int notificationId) async {

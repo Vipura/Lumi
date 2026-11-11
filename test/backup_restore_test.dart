@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:lumi/data/db/lumi_database.dart';
 import 'package:lumi/data/repositories/checklist_repository.dart';
 import 'package:lumi/data/repositories/items_repository.dart';
@@ -30,7 +32,7 @@ void main() {
 
     // Build a valid backup zip payload matching exportFullBackupZip format.
     final payload = {
-      'version': 1,
+      'version': 2,
       'collections': [
         {
           'id': 'col_personal',
@@ -77,7 +79,19 @@ void main() {
           'completedAt': null,
         },
       ],
-      'reminders': <dynamic>[],
+      'reminders': [
+        {
+          'id': 'r1',
+          'itemId': item.id,
+          'entryId': null,
+          'title': 'Check bags',
+          'fireAt': DateTime(2026, 12, 1, 8, 30).toIso8601String(),
+          'earlyReminderMinutes': 60,
+          'repeatRule': 'none',
+          'status': 'scheduled',
+          'notificationId': 4242,
+        },
+      ],
       'itemTags': [
         {'itemId': item.id, 'tagId': 't1'},
       ],
@@ -101,6 +115,54 @@ void main() {
       item.id,
     );
     expect(restoredEntries.single.entryText, 'Pack charger');
+    final restoredReminders = await targetDb.remindersDao
+        .watchRemindersForItem(item.id)
+        .first;
+    expect(restoredReminders.single.title, 'Check bags');
+    expect(restoredReminders.single.earlyReminderMinutes, 60);
     await targetDb.close();
+  });
+
+  test('PDF export embeds attached note images', () async {
+    final db = LumiDatabase(NativeDatabase.memory());
+    final itemsRepo = DriftItemsRepository(db);
+    final service = LumiBackupExportService(db);
+
+    final note = await itemsRepo.createItem(
+      type: LumiItemType.note,
+      title: 'Visual Trip Story',
+      initialPlainText: 'Morning photo from the ridge.',
+    );
+
+    final pdfWithoutImage = await service.buildNotePdfBytes(note);
+    expect(utf8.decode(pdfWithoutImage.take(5).toList()), '%PDF-');
+
+    final tempDir = await Directory.systemTemp.createTemp('lumi_pdf_test_');
+    try {
+      final image = img.Image(width: 24, height: 24);
+      img.fill(image, color: img.ColorRgb8(56, 189, 248));
+      final pngFile = File('${tempDir.path}/sample.png');
+      await pngFile.writeAsBytes(img.encodePng(image));
+
+      await db.attachmentsDao.upsertAttachment(
+        AttachmentsCompanion.insert(
+          id: 'att_img_1',
+          itemId: note.id,
+          kind: 'image',
+          path: pngFile.path,
+          name: 'sample.png',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      final pdfWithImage = await service.buildNotePdfBytes(note);
+      expect(utf8.decode(pdfWithImage.take(5).toList()), '%PDF-');
+      expect(pdfWithImage.length, greaterThan(pdfWithoutImage.length + 100));
+    } finally {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+      await db.close();
+    }
   });
 }
