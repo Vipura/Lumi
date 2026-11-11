@@ -334,9 +334,24 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                   .read(itemsRepositoryProvider)
                   .getItem(widget.itemId);
               if (latest != null) {
-                await ref
-                    .read(backupExportServiceProvider)
-                    .exportNoteMarkdown(latest);
+                try {
+                  final exported = await ref
+                      .read(backupExportServiceProvider)
+                      .exportNoteMarkdown(latest);
+                  if (exported && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Exported note as Markdown.'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Markdown export failed: $e')),
+                    );
+                  }
+                }
               }
             },
           ),
@@ -350,9 +365,22 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                   .read(itemsRepositoryProvider)
                   .getItem(widget.itemId);
               if (latest != null) {
-                await ref
-                    .read(backupExportServiceProvider)
-                    .exportNotePdf(latest);
+                try {
+                  final exported = await ref
+                      .read(backupExportServiceProvider)
+                      .exportNotePdf(latest);
+                  if (exported && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Exported note as PDF.')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('PDF export failed: $e')),
+                    );
+                  }
+                }
               }
             },
           ),

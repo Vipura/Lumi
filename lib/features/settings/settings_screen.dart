@@ -157,27 +157,35 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           SwitchListTile.adaptive(
                             title: const Text('Biometric lock'),
-                            subtitle: const Text(
-                              kIsWeb
-                                  ? 'Available on Android, iOS, and macOS devices'
-                                  : 'Require Face ID, Touch ID, or device lock',
+                            subtitle: Text(
+                              (kIsWeb ||
+                                      defaultTargetPlatform ==
+                                          TargetPlatform.linux)
+                                  ? 'Available on Android, iOS, macOS, and Windows devices'
+                                  : 'Require Face ID, Touch ID, Windows Hello, or device lock',
                             ),
                             value: settings.biometricLockEnabled,
                             onChanged: (v) async {
-                              if (kIsWeb) {
+                              if (kIsWeb ||
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.linux) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Biometric lock is supported on native mobile/desktop builds.',
+                                      'Device lock is supported on Android, iOS, macOS, and Windows.',
                                     ),
                                   ),
                                 );
                                 return;
                               }
                               if (v) {
-                                final auth = LocalAuthentication();
-                                final supported = await auth
-                                    .isDeviceSupported();
+                                var supported = false;
+                                try {
+                                  supported = await LocalAuthentication()
+                                      .isDeviceSupported();
+                                } catch (_) {
+                                  supported = false;
+                                }
                                 if (!supported && context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -231,19 +239,31 @@ class SettingsScreen extends ConsumerWidget {
                                   primary: true,
                                   icon: Icons.download_rounded,
                                   onPressed: () async {
-                                    final count = await ref
-                                        .read(backupExportServiceProvider)
-                                        .exportFullBackupZip();
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Exported $count items to backup archive.',
+                                    try {
+                                      final count = await ref
+                                          .read(backupExportServiceProvider)
+                                          .exportFullBackupZip();
+                                      if (context.mounted && count != null) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Exported $count items to backup archive.',
+                                            ),
                                           ),
-                                        ),
-                                      );
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Export failed: $e'),
+                                          ),
+                                        );
+                                      }
                                     }
                                   },
                                 ),

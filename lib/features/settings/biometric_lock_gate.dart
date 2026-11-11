@@ -35,10 +35,13 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
     super.dispose();
   }
 
+  bool get _platformSupportsBiometric =>
+      !kIsWeb && defaultTargetPlatform != TargetPlatform.linux;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final enabled = ref.read(settingsControllerProvider).biometricLockEnabled;
-    if (!enabled || kIsWeb) return;
+    if (!enabled || !_platformSupportsBiometric) return;
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       setState(() => _unlocked = false);
@@ -49,7 +52,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
 
   Future<void> _checkInitialAuth() async {
     final enabled = ref.read(settingsControllerProvider).biometricLockEnabled;
-    if (!enabled || kIsWeb) {
+    if (!enabled || !_platformSupportsBiometric) {
       _unlocked = true;
       return;
     }
@@ -89,7 +92,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
   @override
   Widget build(BuildContext context) {
     final enabled = ref.watch(settingsControllerProvider).biometricLockEnabled;
-    if (!enabled || kIsWeb || _unlocked) {
+    if (!enabled || !_platformSupportsBiometric || _unlocked) {
       return widget.child;
     }
 

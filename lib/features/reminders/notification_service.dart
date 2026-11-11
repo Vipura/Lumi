@@ -14,7 +14,8 @@ final notificationServiceProvider = Provider<LumiNotificationService>(
   (ref) => LumiNotificationService(),
 );
 
-/// Handles local reminder notifications across iOS, Android 13+, macOS, and Web.
+/// Handles local reminder notifications across iOS, Android 13+, macOS, Linux,
+/// Windows, and Web.
 class LumiNotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -41,10 +42,20 @@ class LumiNotificationService {
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
+    const linuxSettings = LinuxInitializationSettings(
+      defaultActionName: 'Open reminder',
+    );
+    const windowsSettings = WindowsInitializationSettings(
+      appName: 'Lumi',
+      appUserModelId: 'Com.Lumi.App.Lumi',
+      guid: 'a8a4b210-6c41-4c9b-9b7a-5d23d8b41c01',
+    );
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: darwinSettings,
       macOS: darwinSettings,
+      linux: linuxSettings,
+      windows: windowsSettings,
     );
 
     try {
@@ -149,10 +160,14 @@ class LumiNotificationService {
       presentBadge: true,
       presentSound: true,
     );
+    const linuxDetails = LinuxNotificationDetails();
+    const windowsDetails = WindowsNotificationDetails();
     const details = NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
       macOS: darwinDetails,
+      linux: linuxDetails,
+      windows: windowsDetails,
     );
 
     try {

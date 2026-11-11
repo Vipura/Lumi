@@ -4,7 +4,8 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
@@ -25,7 +26,7 @@ class LumiBackupExportService {
 
   final LumiDatabase _db;
 
-  Future<void> exportNoteMarkdown(Item item) async {
+  Future<bool> exportNoteMarkdown(Item item) async {
     final entries = await _db.checklistDao.getEntriesForItem(item.id);
     final buf = StringBuffer(
       DeltaUtils.markdownFromDeltaJson(item.body, title: item.title),
@@ -40,7 +41,7 @@ class LumiBackupExportService {
 
     final bytes = Uint8List.fromList(utf8.encode(buf.toString()));
     final safeName = _sanitizeFileName(item.title, fallback: 'lumi_note');
-    await _shareBytes(
+    return _shareBytes(
       bytes: bytes,
       fileName: '$safeName.md',
       mimeType: 'text/markdown',
@@ -48,7 +49,7 @@ class LumiBackupExportService {
     );
   }
 
-  Future<void> exportNotePdf(Item item) async {
+  Future<bool> exportNotePdf(Item item) async {
     final entries = await _db.checklistDao.getEntriesForItem(item.id);
     final plain = DeltaUtils.plainTextFromDeltaJson(item.body);
 
@@ -102,7 +103,7 @@ class LumiBackupExportService {
 
     final pdfBytes = await doc.save();
     final safeName = _sanitizeFileName(item.title, fallback: 'lumi_note');
-    await _shareBytes(
+    return _shareBytes(
       bytes: pdfBytes,
       fileName: '$safeName.pdf',
       mimeType: 'application/pdf',
@@ -111,7 +112,8 @@ class LumiBackupExportService {
   }
 
   /// Creates a local JSON + attachments `.zip` backup and shares/saves it.
-  Future<int> exportFullBackupZip() async {
+  /// Returns the exported item count, or `null` if the user cancelled saving.
+  Future<int?> exportFullBackupZip() async {
     final items = await _db.select(_db.items).get();
     final entries = await _db.select(_db.checklistEntries).get();
     final reminders = await _db.remindersDao.getAllReminders();
@@ -229,13 +231,13 @@ class LumiBackupExportService {
 
     final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive));
     final stamp = DateTime.now().toIso8601String().split('T').first;
-    await _shareBytes(
+    final exported = await _shareBytes(
       bytes: zipBytes,
       fileName: 'lumi_backup_$stamp.zip',
       mimeType: 'application/zip',
       subject: 'Lumi Local Backup ($stamp)',
     );
-    return items.length;
+    return exported ? items.length : null;
   }
 
   /// Picks a `.zip` backup file and restores all items, checklists, tags,
@@ -411,12 +413,34 @@ class LumiBackupExportService {
     return restoredItems;
   }
 
-  Future<void> _shareBytes({
+  bool get _isDesktop =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  Future<bool> _shareBytes({
     required Uint8List bytes,
     required String fileName,
     required String mimeType,
     required String subject,
   }) async {
+    if (_isDesktop) {
+      try {
+        final saved = await FilePicker.saveFile(
+          dialogTitle: 'Save $fileName',
+          fileName: fileName,
+          mimeType: mimeType,
+          bytes: bytes,
+        );
+        return saved != null;
+      } catch (_) {
+        if (defaultTargetPlatform == TargetPlatform.linux) {
+          rethrow;
+        }
+      }
+    }
+
     final writtenPath = await writeTempFile(fileName, bytes);
     final xfile = writtenPath != null
         ? XFile(writtenPath, name: fileName, mimeType: mimeType)
@@ -425,6 +449,7 @@ class LumiBackupExportService {
     await SharePlus.instance.share(
       ShareParams(files: [xfile], subject: subject),
     );
+    return true;
   }
 
   String _sanitizeFileName(String raw, {required String fallback}) {

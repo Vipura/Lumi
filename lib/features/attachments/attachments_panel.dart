@@ -16,6 +16,17 @@ import '../../data/repositories/providers.dart';
 import 'attachment_service.dart';
 import 'voice_recorder_sheet.dart';
 
+bool get _supportsCameraCapture =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS);
+
+bool get _supportsInlineAudio =>
+    kIsWeb ||
+    defaultTargetPlatform == TargetPlatform.android ||
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.macOS;
+
 /// Displays image thumbnails, PDFs/files, inline voice note players,
 /// and link preview cards for a note, plus an Add Attachment picker.
 class AttachmentsPanel extends ConsumerWidget {
@@ -35,7 +46,9 @@ class AttachmentsPanel extends ConsumerWidget {
         children: [
           _AttachmentOptionTile(
             icon: Icons.photo_library_rounded,
-            label: 'Photo from Gallery',
+            label: _supportsCameraCapture
+                ? 'Photo from Gallery'
+                : 'Choose Image',
             onTap: () async {
               Navigator.of(sheetCtx).pop();
               await ref
@@ -46,19 +59,20 @@ class AttachmentsPanel extends ConsumerWidget {
                   );
             },
           ),
-          _AttachmentOptionTile(
-            icon: Icons.camera_alt_rounded,
-            label: 'Take Photo',
-            onTap: () async {
-              Navigator.of(sheetCtx).pop();
-              await ref
-                  .read(attachmentServiceProvider)
-                  .pickAndAttachImage(
-                    itemId: itemId,
-                    source: ImageSource.camera,
-                  );
-            },
-          ),
+          if (_supportsCameraCapture)
+            _AttachmentOptionTile(
+              icon: Icons.camera_alt_rounded,
+              label: 'Take Photo',
+              onTap: () async {
+                Navigator.of(sheetCtx).pop();
+                await ref
+                    .read(attachmentServiceProvider)
+                    .pickAndAttachImage(
+                      itemId: itemId,
+                      source: ImageSource.camera,
+                    );
+              },
+            ),
           _AttachmentOptionTile(
             icon: Icons.mic_rounded,
             label: 'Record Voice Note',
@@ -323,7 +337,7 @@ class _AudioAttachmentCard extends StatefulWidget {
 }
 
 class _AudioAttachmentCardState extends State<_AudioAttachmentCard> {
-  final AudioPlayer _player = AudioPlayer();
+  AudioPlayer? _player;
   bool _loaded = false;
   bool _playing = false;
   Duration _position = Duration.zero;
@@ -333,47 +347,71 @@ class _AudioAttachmentCardState extends State<_AudioAttachmentCard> {
   void initState() {
     super.initState();
     _duration = Duration(milliseconds: widget.attachment.durationMs ?? 0);
-    _player.playerStateStream.listen((state) {
+    if (!_supportsInlineAudio) return;
+
+    final player = AudioPlayer();
+    _player = player;
+    player.playerStateStream.listen((state) {
       if (!mounted) return;
       final completed = state.processingState == ProcessingState.completed;
       setState(() {
         _playing = state.playing && !completed;
       });
       if (completed) {
-        _player.seek(Duration.zero);
-        _player.pause();
+        player.seek(Duration.zero);
+        player.pause();
       }
     });
-    _player.positionStream.listen((pos) {
+    player.positionStream.listen((pos) {
       if (mounted) setState(() => _position = pos);
     });
-    _player.durationStream.listen((dur) {
+    player.durationStream.listen((dur) {
       if (dur != null && mounted) setState(() => _duration = dur);
     });
   }
 
   @override
   void dispose() {
-    _player.dispose();
+    _player?.dispose();
     super.dispose();
   }
 
+  Future<void> _openExternally() async {
+    final launched = await launchUrl(
+      Uri.file(widget.attachment.path),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No default audio app found for this file.'),
+        ),
+      );
+    }
+  }
+
   Future<void> _togglePlay() async {
+    final player = _player;
+    if (player == null) {
+      await _openExternally();
+      return;
+    }
+
     try {
       if (!_loaded) {
         if (kIsWeb ||
             widget.attachment.path.startsWith('http') ||
             widget.attachment.path.startsWith('blob:')) {
-          await _player.setUrl(widget.attachment.path);
+          await player.setUrl(widget.attachment.path);
         } else {
-          await _player.setFilePath(widget.attachment.path);
+          await player.setFilePath(widget.attachment.path);
         }
         _loaded = true;
       }
       if (_playing) {
-        await _player.pause();
+        await player.pause();
       } else {
-        await _player.play();
+        await player.play();
       }
     } catch (e) {
       if (mounted) {
@@ -404,12 +442,17 @@ class _AudioAttachmentCardState extends State<_AudioAttachmentCard> {
         children: [
           IconButton(
             onPressed: _togglePlay,
+            tooltip: _supportsInlineAudio
+                ? (_playing ? 'Pause' : 'Play')
+                : 'Open in system audio player',
             icon: Icon(
-              _playing
+              !_supportsInlineAudio
+                  ? Icons.open_in_new_rounded
+                  : _playing
                   ? Icons.pause_circle_filled_rounded
                   : Icons.play_circle_filled_rounded,
               color: ext.accentColor,
-              size: 36,
+              size: _supportsInlineAudio ? 36 : 26,
             ),
           ),
           Expanded(
@@ -539,10 +582,33 @@ class _FileAttachmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LumiGlass.card(
       onTap: () async {
-        if (!kIsWeb) {
+        if (kIsWeb) return;
+        final isDesktop =
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.macOS;
+        if (isDesktop) {
+          final opened = await launchUrl(
+            Uri.file(attachment.path),
+            mode: LaunchMode.externalApplication,
+          );
+          if (!opened && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Saved at ${attachment.path}')),
+            );
+          }
+          return;
+        }
+        try {
           await SharePlus.instance.share(
             ShareParams(files: [XFile(attachment.path)], text: attachment.name),
           );
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Unable to share file: $e')));
+          }
         }
       },
       padding: const EdgeInsets.all(LumiSpacing.sm),
