@@ -567,7 +567,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                                       ),
                                       child: NoteSummaryCard(
                                         summary: s,
-                                        heroPrefix: 'item',
+                                        heroPrefix: 'today',
                                         onTap: () => context.push(
                                           '/editor/${s.item.id}?hero=today',
                                         ),
@@ -591,7 +591,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                             itemBuilder: (_, idx) => NoteSummaryCard(
                               summary: pinned[idx],
                               compact: true,
-                              heroPrefix: 'item',
+                              heroPrefix: 'today',
                               onTap: () => context.push(
                                 '/editor/${pinned[idx].item.id}?hero=today',
                               ),
