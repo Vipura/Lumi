@@ -26,7 +26,7 @@ class LumiBackground extends StatefulWidget {
     super.key,
     required this.child,
     this.theme,
-    this.timeOfDayShift = true,
+    this.timeOfDayShift = false,
     this.now,
   });
 
