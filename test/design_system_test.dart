@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lumi/core/design/design_system.dart';
 import 'package:lumi/core/design/lumi_design_gallery_screen.dart';
+
+// Top-level enum visible to all test closures.
+enum _TestTab { a, b, c }
 
 void main() {
   testWidgets(
@@ -263,4 +267,142 @@ void main() {
     await tester.pumpAndSettle();
     expect(pressed, isTrue);
   });
+
+  testWidgets(
+    'LumiGlassSegmentedControl slides indicator, fires onChanged, and updates labels',
+    (tester) async {
+      var selected = _TestTab.a;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LumiThemes.build(
+            brightness: Brightness.light,
+            useGoogleFonts: false,
+          ),
+          home: StatefulBuilder(
+            builder: (context, setState) => Scaffold(
+              body: Center(
+                child: LumiGlassSegmentedControl<_TestTab>(
+                  segments: const [
+                    LumiSegment(value: _TestTab.a, label: 'For You'),
+                    LumiSegment(value: _TestTab.b, label: 'Library'),
+                    LumiSegment(value: _TestTab.c, label: 'Radio'),
+                  ],
+                  selectedValue: selected,
+                  onChanged: (v) => setState(() => selected = v),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // All labels render
+      expect(find.text('For You'), findsOneWidget);
+      expect(find.text('Library'), findsOneWidget);
+      expect(find.text('Radio'), findsOneWidget);
+
+      // Initial state: 'For You' selected
+      expect(selected, _TestTab.a);
+
+      // Tap 'Library'
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      expect(selected, _TestTab.b);
+
+      // Tap 'Radio'
+      await tester.tap(find.text('Radio'));
+      await tester.pumpAndSettle();
+      expect(selected, _TestTab.c);
+
+      // Tap already-selected has no effect
+      await tester.tap(find.text('Radio'));
+      await tester.pumpAndSettle();
+      expect(selected, _TestTab.c);
+
+      // Renders inside an unbounded Row (e.g. header bar) and supports drag scrub
+      var rowSelected = _TestTab.a;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LumiThemes.build(
+            brightness: Brightness.dark,
+            useGoogleFonts: false,
+          ),
+          home: StatefulBuilder(
+            builder: (context, setState) => Scaffold(
+              body: Row(
+                children: [
+                  const Expanded(child: Text('Plan')),
+                  LumiGlassSegmentedControl<_TestTab>(
+                    segments: const [
+                      LumiSegment(
+                        value: _TestTab.a,
+                        label: 'For You',
+                        icon: Icons.favorite_rounded,
+                      ),
+                      LumiSegment(
+                        value: _TestTab.b,
+                        label: 'Library',
+                        icon: Icons.library_music_rounded,
+                      ),
+                    ],
+                    selectedValue: rowSelected,
+                    onChanged: (v) => setState(() => rowSelected = v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('For You'), findsOneWidget);
+      expect(find.text('Library'), findsOneWidget);
+
+      await tester.drag(
+        find.byType(LumiGlassSegmentedControl<_TestTab>),
+        const Offset(100, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(rowSelected, _TestTab.b);
+    },
+  );
+
+  testWidgets(
+    'Desktop targets skip BackdropFilter blur and radial-orb mesh painting',
+    (tester) async {
+      for (final platform in const [
+        TargetPlatform.macOS,
+        TargetPlatform.windows,
+        TargetPlatform.linux,
+      ]) {
+        debugDefaultTargetPlatformOverride = platform;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: LumiThemes.build(
+              brightness: Brightness.dark,
+              useGoogleFonts: false,
+            ),
+            home: const LumiBackground(
+              child: Scaffold(
+                body: LumiGlass(
+                  blur: 6.0,
+                  elevated: true,
+                  child: Text('Desktop Chrome'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Desktop Chrome'), findsOneWidget);
+        expect(find.byType(BackdropFilter), findsNothing);
+      }
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
 }

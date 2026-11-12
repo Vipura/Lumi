@@ -63,13 +63,22 @@ class LumiBackground extends StatelessWidget {
 
     final palette = _resolveOrbs(activeTheme, brightness, phase);
 
+    // On desktop platforms (macOS/Windows/Linux) & web, the 4-orb CustomPaint
+    // runs on the CPU raster thread and causes fullscreen overdraw on resize.
+    // Replace with a crisp three-stop LinearGradient that costs zero per frame.
+    final bool useSimpleGradient =
+        reduceTransparency ||
+        kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.iOS &&
+            defaultTargetPlatform != TargetPlatform.android);
+
     return Stack(
       fit: StackFit.expand,
       children: [
         RepaintBoundary(
           child: ColoredBox(
             color: palette.base,
-            child: reduceTransparency
+            child: useSimpleGradient
                 ? DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -77,8 +86,10 @@ class LumiBackground extends StatelessWidget {
                         end: Alignment.bottomRight,
                         colors: [
                           palette.base,
-                          Color.lerp(palette.base, palette.orbs.first, 0.14)!,
+                          Color.lerp(palette.base, palette.orbs.first, 0.22)!,
+                          Color.lerp(palette.base, palette.orbs[2], 0.16)!,
                         ],
+                        stops: const [0.0, 0.55, 1.0],
                       ),
                     ),
                   )

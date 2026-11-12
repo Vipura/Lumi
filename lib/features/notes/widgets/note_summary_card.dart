@@ -40,106 +40,114 @@ class NoteSummaryCard extends StatelessWidget {
     final rawSnippet = item.plainText.trim().replaceAll(RegExp(r'\s+'), ' ');
     final snippet = rawSnippet == title ? '' : rawSnippet;
 
-    final cardContent = LumiGlass.card(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      tintColor: tint,
-      padding: EdgeInsets.all(compact ? LumiSpacing.sm : LumiSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (tint != null) ...[
-                Container(
-                  width: 10,
-                  height: 10,
-                  margin: const EdgeInsets.only(top: 5, right: 8),
-                  decoration: BoxDecoration(
-                    color: tint,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              if (summary.checklistTotal > 0) ...[
-                const SizedBox(width: 6),
-                LumiProgressRing(
-                  progress: summary.checklistProgress,
-                  size: 26,
-                  strokeWidth: 3,
-                  child: Text(
-                    '${summary.checklistDone}',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
+    final cardContent = RepaintBoundary(
+      child: LumiGlass.card(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        tintColor: tint,
+        padding: EdgeInsets.all(compact ? LumiSpacing.sm : LumiSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (tint != null) ...[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.only(top: 5, right: 8),
+                    decoration: BoxDecoration(
+                      color: tint,
+                      shape: BoxShape.circle,
                     ),
                   ),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-              ] else if (item.pinned) ...[
-                const SizedBox(width: 6),
-                Icon(Icons.push_pin_rounded, size: 16, color: ext.accentColor),
+                if (summary.checklistTotal > 0) ...[
+                  const SizedBox(width: 6),
+                  LumiProgressRing(
+                    progress: summary.checklistProgress,
+                    size: 26,
+                    strokeWidth: 3,
+                    child: Text(
+                      '${summary.checklistDone}',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ] else if (item.pinned) ...[
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.push_pin_rounded,
+                    size: 16,
+                    color: ext.accentColor,
+                  ),
+                ],
               ],
+            ),
+            if (snippet.isNotEmpty) ...[
+              const SizedBox(height: LumiSpacing.xs),
+              Text(
+                snippet,
+                maxLines: compact ? 2 : 3,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: ext.inkMuted),
+              ),
             ],
-          ),
-          if (snippet.isNotEmpty) ...[
-            const SizedBox(height: LumiSpacing.xs),
-            Text(
-              snippet,
-              maxLines: compact ? 2 : 3,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: ext.inkMuted),
+            const SizedBox(height: LumiSpacing.sm),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (summary.collection != null)
+                  _MiniBadge(
+                    label: summary.collection!.name,
+                    color: Color(summary.collection!.colorValue),
+                  ),
+                if (item.dueDate != null)
+                  _MiniBadge(
+                    label: DateFormat('MMM d').format(item.dueDate!),
+                    icon: Icons.event_outlined,
+                    color: ext.accentColor,
+                  ),
+                if (summary.nextReminder != null)
+                  _MiniBadge(
+                    label: DateFormat('h:mm a')
+                        .format(summary.nextReminder!.fireAt),
+                    icon: Icons.notifications_active_outlined,
+                    color: LumiColors.warning,
+                  ),
+                if (summary.attachmentCount > 0)
+                  _MiniBadge(
+                    label: '${summary.attachmentCount}',
+                    icon: Icons.attach_file_rounded,
+                    color: LumiColors.info,
+                  ),
+                ...summary.tags
+                    .take(2)
+                    .map(
+                      (tag) => _MiniBadge(
+                        label: '#${tag.name}',
+                        color: ext.inkMuted,
+                      ),
+                    ),
+              ],
             ),
           ],
-          const SizedBox(height: LumiSpacing.sm),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (summary.collection != null)
-                _MiniBadge(
-                  label: summary.collection!.name,
-                  color: Color(summary.collection!.colorValue),
-                ),
-              if (item.dueDate != null)
-                _MiniBadge(
-                  label: DateFormat('MMM d').format(item.dueDate!),
-                  icon: Icons.event_outlined,
-                  color: ext.accentColor,
-                ),
-              if (summary.nextReminder != null)
-                _MiniBadge(
-                  label: DateFormat('h:mm a')
-                      .format(summary.nextReminder!.fireAt),
-                  icon: Icons.notifications_active_outlined,
-                  color: LumiColors.warning,
-                ),
-              if (summary.attachmentCount > 0)
-                _MiniBadge(
-                  label: '${summary.attachmentCount}',
-                  icon: Icons.attach_file_rounded,
-                  color: LumiColors.info,
-                ),
-              ...summary.tags
-                  .take(2)
-                  .map(
-                    (tag) =>
-                        _MiniBadge(label: '#${tag.name}', color: ext.inkMuted),
-                  ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
 

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -106,6 +107,7 @@ class _LumiAppState extends ConsumerState<LumiApp> {
         title: 'Lumi',
         debugShowCheckedModeBanner: false,
         routerConfig: router,
+        scrollBehavior: const _LumiScrollBehavior(),
         themeMode: settings.themeMode,
         theme: _cachedLightTheme,
         darkTheme: _cachedDarkTheme,
@@ -124,4 +126,17 @@ class _LumiAppState extends ConsumerState<LumiApp> {
       ),
     );
   }
+}
+
+class _LumiScrollBehavior extends MaterialScrollBehavior {
+  const _LumiScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }

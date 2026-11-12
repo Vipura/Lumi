@@ -1,11 +1,30 @@
 import 'dart:collection';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'lumi_themes.dart';
 import 'lumi_tokens.dart';
+
+/// Returns `true` if the current platform supports GPU-accelerated
+/// BackdropFilter blur efficiently (iOS/Android via Impeller/Skia).
+/// Desktop renderers (macOS, Windows, Linux) and Web fall back to expensive
+/// CPU/multi-pass paths that cause frame drops, so we disable live blur there.
+bool get _platformSupportsBlur =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android);
+
+/// Apple platforms & Android render continuous superellipses natively/cleanly;
+/// Windows & Linux Skia paths use hardware fast-path `RRect` geometry to avoid
+/// CPU path tessellation and software shadow mask overhead during scroll.
+bool get _platformUsesSuperellipse =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.android);
 
 /// Optical glass clarity modes inspired by Apple's SwiftUI `Glass` styles
 /// (`Glass.regular` and `Glass.clear`).
@@ -182,8 +201,14 @@ class _LumiGlassState extends State<LumiGlass> {
 
     final isPill = widget.borderRadius >= 100;
     final radius = BorderRadius.circular(widget.borderRadius);
+    // Skip BackdropFilter on desktop — it uses an unaccelerated CPU path on
+    // Windows/macOS/Linux that causes frame drops. iOS/Android use Impeller
+    // or Skia's GPU blur pass which is essentially free.
     final effectiveBlur =
-        (!widget.useBlur || reduceTransparency || widget.blur <= 0)
+        (!widget.useBlur ||
+            reduceTransparency ||
+            widget.blur <= 0 ||
+            !_platformSupportsBlur)
         ? 0.0
         : widget.blur.clamp(0.0, 8.0);
 
@@ -222,10 +247,24 @@ class _LumiGlassState extends State<LumiGlass> {
           );
 
     if (effectiveBlur <= 0 && !reduceTransparency && !isClear) {
-      fillTop = Color.lerp(fillTop, solidSurface, isDark ? 0.12 : 0.16)!;
-      fillBottom = Color.lerp(fillBottom, solidSurface, isDark ? 0.08 : 0.11)!;
+      if (widget.useBlur && !_platformSupportsBlur && widget.elevated) {
+        // Desktop frosted substitute (sheets, dialogs, floating rail/bars)
+        // blends enough solid surface to stay crisp and legible without blur.
+        final topBlend = !widget.grouped ? (isDark ? 0.72 : 0.76) : 0.36;
+        final bottomBlend = !widget.grouped ? (isDark ? 0.62 : 0.66) : 0.28;
+        fillTop = Color.lerp(fillTop, solidSurface, topBlend)!;
+        fillBottom = Color.lerp(fillBottom, solidSurface, bottomBlend)!;
+      } else {
+        fillTop = Color.lerp(fillTop, solidSurface, isDark ? 0.12 : 0.16)!;
+        fillBottom = Color.lerp(
+          fillBottom,
+          solidSurface,
+          isDark ? 0.08 : 0.11,
+        )!;
+      }
     }
 
+    final useRRectShape = isPill || !_platformUsesSuperellipse;
     final paintShadow =
         widget.hasShadow ?? (effectiveBlur > 0 || widget.elevated);
     final needsClip = effectiveBlur > 0 || widget.clipContent;
@@ -233,7 +272,7 @@ class _LumiGlassState extends State<LumiGlass> {
     final body = _buildSurfaceBody(
       context: context,
       isDark: isDark,
-      isPill: isPill,
+      useRRectShape: useRRectShape,
       radius: radius,
       effectiveBlur: effectiveBlur,
       reduceTransparency: reduceTransparency,
@@ -246,13 +285,13 @@ class _LumiGlassState extends State<LumiGlass> {
     final Widget maybeClipped;
     if (!needsClip) {
       maybeClipped = body;
-    } else if (isPill) {
+    } else if (useRRectShape) {
       maybeClipped = ClipRRect(borderRadius: radius, child: body);
     } else {
       maybeClipped = ClipRSuperellipse(borderRadius: radius, child: body);
     }
 
-    final OutlinedBorder outerShape = isPill
+    final OutlinedBorder outerShape = useRRectShape
         ? RoundedRectangleBorder(borderRadius: radius)
         : RoundedSuperellipseBorder(borderRadius: radius);
 
@@ -329,7 +368,7 @@ class _LumiGlassState extends State<LumiGlass> {
   Widget _buildSurfaceBody({
     required BuildContext context,
     required bool isDark,
-    required bool isPill,
+    required bool useRRectShape,
     required BorderRadius radius,
     required double effectiveBlur,
     required bool reduceTransparency,
@@ -353,7 +392,7 @@ class _LumiGlassState extends State<LumiGlass> {
         color: Color.lerp(topBorder, bottomBorder, 0.45)!,
         width: 1.0,
       );
-      final shape = isPill
+      final shape = useRRectShape
           ? RoundedRectangleBorder(borderRadius: radius, side: borderSide)
           : RoundedSuperellipseBorder(borderRadius: radius, side: borderSide);
 
@@ -390,12 +429,12 @@ class _LumiGlassState extends State<LumiGlass> {
         decoration: reduceTransparency
             ? ShapeDecoration(
                 color: solidSurface,
-                shape: isPill
+                shape: useRRectShape
                     ? RoundedRectangleBorder(borderRadius: radius)
                     : RoundedSuperellipseBorder(borderRadius: radius),
               )
             : ShapeDecoration(
-                shape: isPill
+                shape: useRRectShape
                     ? RoundedRectangleBorder(borderRadius: radius)
                     : RoundedSuperellipseBorder(borderRadius: radius),
                 gradient: LinearGradient(
@@ -647,10 +686,12 @@ class LumiLiquidLensPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final outerRect = rect.deflate(0.55);
     final insetRect = rect.deflate(2.0);
-    final isPill = borderRadius >= 100;
+    final isPill = borderRadius >= 100 || !_platformUsesSuperellipse;
     final maxR = outerRect.shortestSide / 2.0;
-    final effectiveOuterR = isPill ? maxR : borderRadius.clamp(0.0, maxR);
-    final effectiveInsetR = isPill
+    final effectiveOuterR = borderRadius >= 100
+        ? maxR
+        : borderRadius.clamp(0.0, maxR);
+    final effectiveInsetR = borderRadius >= 100
         ? (insetRect.shortestSide / 2.0)
         : (borderRadius - 1.5).clamp(0.0, insetRect.shortestSide / 2.0);
 
