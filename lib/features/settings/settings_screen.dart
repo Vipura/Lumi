@@ -45,22 +45,28 @@ class SettingsScreen extends ConsumerWidget {
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                           const SizedBox(height: LumiSpacing.xs),
-                          Wrap(
-                            spacing: LumiSpacing.xs,
-                            children:
-                                [
-                                  (ThemeMode.system, 'System'),
-                                  (ThemeMode.light, 'Light'),
-                                  (ThemeMode.dark, 'Dark'),
-                                ].map((pair) {
-                                  return LumiGlassChip(
-                                    label: pair.$2,
-                                    selected: settings.themeMode == pair.$1,
-                                    onTap: () => ctrl.update(
-                                      (s) => s.copyWith(themeMode: pair.$1),
-                                    ),
-                                  );
-                                }).toList(),
+                          LumiGlassSegmentedControl<ThemeMode>(
+                            expanded: true,
+                            segments: const [
+                              LumiSegment(
+                                value: ThemeMode.system,
+                                label: 'System',
+                                icon: Icons.brightness_auto_rounded,
+                              ),
+                              LumiSegment(
+                                value: ThemeMode.light,
+                                label: 'Light',
+                                icon: Icons.light_mode_rounded,
+                              ),
+                              LumiSegment(
+                                value: ThemeMode.dark,
+                                label: 'Dark',
+                                icon: Icons.dark_mode_rounded,
+                              ),
+                            ],
+                            selectedValue: settings.themeMode,
+                            onChanged: (mode) =>
+                                ctrl.update((s) => s.copyWith(themeMode: mode)),
                           ),
                           const SizedBox(height: LumiSpacing.md),
                           Text(

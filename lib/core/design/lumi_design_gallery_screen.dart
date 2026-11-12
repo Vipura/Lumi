@@ -30,6 +30,7 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
   double _progress = 0.68;
   bool _lensToggleA = true;
   bool _lensToggleB = false;
+  int _gallerySegment = 0;
   final Set<String> _selectedTags = {'Focus', 'Design'};
 
   @override
@@ -373,61 +374,82 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                             ),
                             const SizedBox(height: LumiSpacing.lg),
                             const _SectionHeader(
-                              'Liquid Glass Switches & Lens Controls',
+                              'Liquid Glass Switches, Segments & Lens Controls',
                             ),
                             LumiGlass.card(
                               padding: const EdgeInsets.all(LumiSpacing.md),
-                              child: Wrap(
-                                spacing: LumiSpacing.lg,
-                                runSpacing: LumiSpacing.sm,
-                                crossAxisAlignment: WrapCrossAlignment.center,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  LumiGlassSegmentedControl<int>(
+                                    expanded: true,
+                                    showIcons: false,
+                                    segments: const [
+                                      LumiSegment(value: 0, label: 'For You'),
+                                      LumiSegment(value: 1, label: 'Library'),
+                                      LumiSegment(value: 2, label: 'Saved'),
+                                    ],
+                                    selectedValue: _gallerySegment,
+                                    onChanged: (v) =>
+                                        setState(() => _gallerySegment = v),
+                                  ),
+                                  const SizedBox(height: LumiSpacing.md),
+                                  Wrap(
+                                    spacing: LumiSpacing.lg,
+                                    runSpacing: LumiSpacing.sm,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     children: [
-                                      LumiGlassSwitch(
-                                        value: _lensToggleA,
-                                        onChanged: (v) =>
-                                            setState(() => _lensToggleA = v),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          LumiGlassSwitch(
+                                            value: _lensToggleA,
+                                            onChanged: (v) => setState(
+                                              () => _lensToggleA = v,
+                                            ),
+                                          ),
+                                          const SizedBox(width: LumiSpacing.xs),
+                                          Flexible(
+                                            child: Text(
+                                              _lensToggleA
+                                                  ? 'Glass Active'
+                                                  : 'Muted',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(scopedContext)
+                                                  .textTheme
+                                                  .bodyMedium,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: LumiSpacing.xs),
-                                      Flexible(
-                                        child: Text(
-                                          _lensToggleA
-                                              ? 'Glass Active'
-                                              : 'Muted',
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(scopedContext)
-                                              .textTheme
-                                              .bodyMedium,
-                                        ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          LumiGlassSwitch(
+                                            value: _lensToggleB,
+                                            activeColor: LumiColors.success,
+                                            onChanged: (v) => setState(
+                                              () => _lensToggleB = v,
+                                            ),
+                                          ),
+                                          const SizedBox(width: LumiSpacing.xs),
+                                          Flexible(
+                                            child: Text(
+                                              'Optic Green',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(scopedContext)
+                                                  .textTheme
+                                                  .bodyMedium,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      LumiGlassLensButton(
+                                        label: 'Get started',
+                                        onPressed: () {},
                                       ),
                                     ],
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      LumiGlassSwitch(
-                                        value: _lensToggleB,
-                                        activeColor: LumiColors.success,
-                                        onChanged: (v) =>
-                                            setState(() => _lensToggleB = v),
-                                      ),
-                                      const SizedBox(width: LumiSpacing.xs),
-                                      Flexible(
-                                        child: Text(
-                                          'Optic Green',
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(scopedContext)
-                                              .textTheme
-                                              .bodyMedium,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  LumiGlassLensButton(
-                                    label: 'Get started',
-                                    onPressed: () {},
                                   ),
                                 ],
                               ),

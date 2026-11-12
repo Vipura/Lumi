@@ -147,27 +147,22 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                       ],
                     ),
                     const SizedBox(height: LumiSpacing.sm),
-                    Wrap(
-                      spacing: LumiSpacing.xs,
-                      runSpacing: LumiSpacing.xs,
-                      children: [
-                        LumiGlassChip(
+                    LumiGlassSegmentedControl<_RemindersFilter>(
+                      expanded: true,
+                      segments: [
+                        LumiSegment(
+                          value: _RemindersFilter.upcoming,
                           label: 'Upcoming (${upcoming.length})',
-                          selected: _filter == _RemindersFilter.upcoming,
                           icon: Icons.notifications_active_outlined,
-                          onTap: () => setState(
-                            () => _filter = _RemindersFilter.upcoming,
-                          ),
                         ),
-                        LumiGlassChip(
+                        LumiSegment(
+                          value: _RemindersFilter.completed,
                           label: 'Completed (${completed.length})',
-                          selected: _filter == _RemindersFilter.completed,
                           icon: Icons.check_circle_outline_rounded,
-                          onTap: () => setState(
-                            () => _filter = _RemindersFilter.completed,
-                          ),
                         ),
                       ],
+                      selectedValue: _filter,
+                      onChanged: (next) => setState(() => _filter = next),
                     ),
                   ],
                 ),

@@ -104,25 +104,21 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                     ),
                   ),
                   const SizedBox(width: LumiSpacing.sm),
-                  LumiGlassEffectContainer(
-                    showDividers: false,
-                    spacing: 4,
-                    padding: const EdgeInsets.all(4),
-                    children: [
-                      LumiGlassChip(
+                  LumiGlassSegmentedControl<_PlannerTab>(
+                    segments: const [
+                      LumiSegment(
+                        value: _PlannerTab.calendar,
                         label: 'Calendar',
                         icon: Icons.calendar_month_rounded,
-                        selected: _tab == _PlannerTab.calendar,
-                        onTap: () =>
-                            setState(() => _tab = _PlannerTab.calendar),
                       ),
-                      LumiGlassChip(
+                      LumiSegment(
+                        value: _PlannerTab.boards,
                         label: 'Boards',
                         icon: Icons.view_kanban_rounded,
-                        selected: _tab == _PlannerTab.boards,
-                        onTap: () => setState(() => _tab = _PlannerTab.boards),
                       ),
                     ],
+                    selectedValue: _tab,
+                    onChanged: (v) => setState(() => _tab = v),
                   ),
                 ],
               ),
