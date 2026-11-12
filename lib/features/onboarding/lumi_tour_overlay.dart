@@ -121,8 +121,9 @@ class _LumiTourOverlayState extends State<LumiTourOverlay> {
                 ),
                 child: LumiGlass(
                   borderRadius: LumiRadius.xl,
-                  blur: 8,
+                  blur: 6,
                   elevated: true,
+                  grouped: false,
                   tintColor: ext.accentColor,
                   padding: const EdgeInsets.all(LumiSpacing.lg),
                   child: SingleChildScrollView(

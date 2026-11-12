@@ -107,7 +107,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 360),
                   child: LumiGlass(
-                    blur: 20,
+                    blur: 8,
                     elevated: true,
                     grouped: false,
                     padding: const EdgeInsets.all(LumiSpacing.xl),

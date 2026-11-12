@@ -226,6 +226,8 @@ class _StepTwo extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         LumiGlass(
+          useBlur: false,
+          blur: 0,
           elevated: true,
           padding: const EdgeInsets.all(LumiSpacing.lg),
           child: Column(
@@ -292,6 +294,8 @@ class _StepThree extends StatelessWidget {
         ),
         const SizedBox(height: LumiSpacing.lg),
         LumiGlass(
+          useBlur: false,
+          blur: 0,
           elevated: true,
           padding: const EdgeInsets.all(LumiSpacing.md),
           child: TextField(

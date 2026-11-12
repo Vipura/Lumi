@@ -161,75 +161,58 @@ class _ChecklistsScreenState extends ConsumerState<ChecklistsScreen> {
                           onPressed: _createChecklist,
                         ),
                         const SizedBox(width: LumiSpacing.xs),
-                        LumiGlass(
-                          borderRadius: LumiRadius.pill,
-                          useBlur: false,
-                          blur: 0,
-                          elevated: true,
-                          hasShadow: false,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 3,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              LumiGlassIconButton(
-                                icon: Icons.auto_awesome_outlined,
-                                size: 36,
-                                iconSize: 19,
-                                useBlur: false,
-                                chrome: false,
-                                tooltip: 'Checklist templates',
-                                onTap: () async {
-                                  final id = await showTemplatesSheet(
-                                    context,
-                                    ref,
-                                    LumiItemType.checklist,
-                                  );
-                                  if (id != null && context.mounted) {
-                                    unawaited(context.push('/editor/$id'));
+                        LumiGlassEffectContainer(
+                          children: [
+                            LumiGlassIconButton(
+                              icon: Icons.auto_awesome_outlined,
+                              size: 36,
+                              iconSize: 19,
+                              useBlur: false,
+                              chrome: false,
+                              tooltip: 'Checklist templates',
+                              onTap: () async {
+                                final id = await showTemplatesSheet(
+                                  context,
+                                  ref,
+                                  LumiItemType.checklist,
+                                );
+                                if (id != null && context.mounted) {
+                                  unawaited(context.push('/editor/$id'));
+                                }
+                              },
+                            ),
+                            SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                tooltip: 'More options',
+                                icon: Icon(
+                                  Icons.more_horiz_rounded,
+                                  size: 20,
+                                  color: ext.ink,
+                                ),
+                                onSelected: (value) {
+                                  if (value == 'archive') {
+                                    context.push('/archive');
+                                  }
+                                  if (value == 'trash') {
+                                    context.push('/trash');
                                   }
                                 },
-                              ),
-                              Container(
-                                width: 1,
-                                height: 18,
-                                color: ext.inkMuted.withValues(alpha: 0.18),
-                              ),
-                              SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: PopupMenuButton<String>(
-                                  padding: EdgeInsets.zero,
-                                  tooltip: 'More options',
-                                  icon: Icon(
-                                    Icons.more_horiz_rounded,
-                                    size: 20,
-                                    color: ext.ink,
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'archive',
+                                    child: Text('Archived'),
                                   ),
-                                  onSelected: (value) {
-                                    if (value == 'archive') {
-                                      context.push('/archive');
-                                    }
-                                    if (value == 'trash') {
-                                      context.push('/trash');
-                                    }
-                                  },
-                                  itemBuilder: (_) => const [
-                                    PopupMenuItem(
-                                      value: 'archive',
-                                      child: Text('Archived'),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'trash',
-                                      child: Text('Trash (30-day restore)'),
-                                    ),
-                                  ],
-                                ),
+                                  PopupMenuItem(
+                                    value: 'trash',
+                                    child: Text('Trash (30-day restore)'),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

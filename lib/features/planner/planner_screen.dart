@@ -104,33 +104,25 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                     ),
                   ),
                   const SizedBox(width: LumiSpacing.sm),
-                  LumiGlass(
-                    borderRadius: LumiRadius.pill,
-                    useBlur: false,
-                    blur: 0,
-                    elevated: true,
-                    hasShadow: false,
+                  LumiGlassEffectContainer(
+                    showDividers: false,
+                    spacing: 4,
                     padding: const EdgeInsets.all(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        LumiGlassChip(
-                          label: 'Calendar',
-                          icon: Icons.calendar_month_rounded,
-                          selected: _tab == _PlannerTab.calendar,
-                          onTap: () =>
-                              setState(() => _tab = _PlannerTab.calendar),
-                        ),
-                        const SizedBox(width: 4),
-                        LumiGlassChip(
-                          label: 'Boards',
-                          icon: Icons.view_kanban_rounded,
-                          selected: _tab == _PlannerTab.boards,
-                          onTap: () =>
-                              setState(() => _tab = _PlannerTab.boards),
-                        ),
-                      ],
-                    ),
+                    children: [
+                      LumiGlassChip(
+                        label: 'Calendar',
+                        icon: Icons.calendar_month_rounded,
+                        selected: _tab == _PlannerTab.calendar,
+                        onTap: () =>
+                            setState(() => _tab = _PlannerTab.calendar),
+                      ),
+                      LumiGlassChip(
+                        label: 'Boards',
+                        icon: Icons.view_kanban_rounded,
+                        selected: _tab == _PlannerTab.boards,
+                        onTap: () => setState(() => _tab = _PlannerTab.boards),
+                      ),
+                    ],
                   ),
                 ],
               ),

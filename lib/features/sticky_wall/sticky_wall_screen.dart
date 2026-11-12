@@ -561,7 +561,7 @@ class _EditStickyDialogState extends State<_EditStickyDialog> {
         constraints: const BoxConstraints(maxWidth: 420),
         child: LumiGlass(
           borderRadius: LumiRadius.lg,
-          blur: 20,
+          blur: 6,
           elevated: true,
           grouped: false,
           padding: const EdgeInsets.all(LumiSpacing.lg),

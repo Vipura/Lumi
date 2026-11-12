@@ -83,7 +83,7 @@ void main() {
   });
 
   testWidgets(
-    'LumiGlass uses ClipRRect, groups inside BackdropGroup, and skips blur on cards',
+    'LumiGlass uses ClipRSuperellipse, groups inside BackdropGroup, and skips blur & clip on cards',
     (tester) async {
       final groupKey = BackdropKey();
       await tester.pumpWidget(
@@ -101,6 +101,11 @@ void main() {
                     borderRadius: LumiRadius.md,
                     child: Text('Grouped Surface'),
                   ),
+                  LumiGlass(
+                    borderRadius: LumiRadius.pill,
+                    variant: LumiGlassVariant.clear,
+                    child: Text('Clear Pill'),
+                  ),
                   LumiGlass.card(child: Text('Fast Card')),
                 ],
               ),
@@ -109,18 +114,56 @@ void main() {
         ),
       );
 
-      expect(find.byType(ClipRRect), findsNWidgets(2));
-      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(ClipRSuperellipse), findsOneWidget);
+      expect(find.byType(ClipRRect), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNWidgets(2));
 
       final renderBackdrop = tester.renderObject<RenderBackdropFilter>(
-        find.byType(BackdropFilter),
+        find.byType(BackdropFilter).first,
       );
       expect(renderBackdrop.backdropKey, equals(groupKey));
     },
   );
 
   testWidgets(
-    'LumiGlassSwitch and LumiGlassSwitchTile toggle and report semantics',
+    'LumiGlassEffectContainer and LumiScrollEdge render cleanly without overflow at 1.4x text scale',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.4)),
+          child: MaterialApp(
+            theme: LumiThemes.build(
+              brightness: Brightness.dark,
+              useGoogleFonts: false,
+            ),
+            home: const Stack(
+              children: [
+                LumiDesignGalleryScreen(initialBrightness: Brightness.dark),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: LumiScrollEdge(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(LumiGlassEffectContainer), findsAtLeastNWidgets(1));
+      expect(find.byType(LumiScrollEdge), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'LumiGlassSwitch and LumiGlassSwitchTile toggle via tap and horizontal drag',
     (tester) async {
       var value = false;
       await tester.pumpWidget(
@@ -151,9 +194,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(value, isTrue);
 
-      await tester.tap(find.text('Liquid toggle'));
+      // Drag left to switch off.
+      await tester.drag(find.byType(LumiGlassSwitch), const Offset(-28, 0));
       await tester.pumpAndSettle();
       expect(value, isFalse);
+
+      await tester.tap(find.text('Liquid toggle'));
+      await tester.pumpAndSettle();
+      expect(value, isTrue);
     },
   );
 
