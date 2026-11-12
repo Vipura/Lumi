@@ -247,8 +247,19 @@ class _LumiMeshPainter extends CustomPainter {
 
   final _BackgroundPalette palette;
 
-  @override
-  void paint(Canvas canvas, Size size) {
+  static Size? _cachedSize;
+  static _BackgroundPalette? _cachedPalette;
+  static List<({Offset center, double radius, Paint paint})>? _cachedOrbs;
+
+  List<({Offset center, double radius, Paint paint})> _resolveMeshOrbs(
+    Size size,
+  ) {
+    if (_cachedSize == size &&
+        _cachedPalette == palette &&
+        _cachedOrbs != null) {
+      return _cachedOrbs!;
+    }
+
     final specs = [
       (
         center: Offset(size.width * 0.20, size.height * 0.18),
@@ -272,17 +283,37 @@ class _LumiMeshPainter extends CustomPainter {
       ),
     ];
 
-    for (final orb in specs) {
-      final paint = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            orb.color.withValues(alpha: palette.orbOpacity),
-            orb.color.withValues(alpha: palette.orbOpacity * 0.36),
-            orb.color.withValues(alpha: 0.0),
-          ],
-          stops: const [0.0, 0.48, 1.0],
-        ).createShader(Rect.fromCircle(center: orb.center, radius: orb.radius));
-      canvas.drawCircle(orb.center, orb.radius, paint);
+    final built = [
+      for (final orb in specs)
+        (
+          center: orb.center,
+          radius: orb.radius,
+          paint: Paint()
+            ..shader =
+                RadialGradient(
+                  colors: [
+                    orb.color.withValues(alpha: palette.orbOpacity),
+                    orb.color.withValues(alpha: palette.orbOpacity * 0.36),
+                    orb.color.withValues(alpha: 0.0),
+                  ],
+                  stops: const [0.0, 0.48, 1.0],
+                ).createShader(
+                  Rect.fromCircle(center: orb.center, radius: orb.radius),
+                ),
+        ),
+    ];
+
+    _cachedSize = size;
+    _cachedPalette = palette;
+    _cachedOrbs = built;
+    return built;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    for (final orb in _resolveMeshOrbs(size)) {
+      canvas.drawCircle(orb.center, orb.radius, orb.paint);
     }
   }
 

@@ -36,7 +36,7 @@ Future<T?> showLumiGlassDialog<T>({
           constraints: const BoxConstraints(maxWidth: 420),
           child: LumiGlass(
             borderRadius: LumiRadius.lg,
-            blur: 8,
+            blur: 6,
             elevated: true,
             grouped: false,
             tintColor: tintColor,
@@ -170,7 +170,7 @@ class _LumiTextPromptDialogState extends State<_LumiTextPromptDialog> {
         constraints: const BoxConstraints(maxWidth: 420),
         child: LumiGlass(
           borderRadius: LumiRadius.lg,
-          blur: 8,
+          blur: 6,
           elevated: true,
           grouped: false,
           padding: const EdgeInsets.all(LumiSpacing.lg),

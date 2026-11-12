@@ -176,35 +176,11 @@ class _LumiGlassLensButtonState extends State<LumiGlassLensButton> {
             scale: scale,
             duration: reduceMotion ? Duration.zero : LumiMotion.fast,
             curve: LumiMotion.spring,
-            child: Opacity(
-              opacity: widget.onPressed == null ? 0.55 : 1.0,
-              child: Container(
-                padding: EdgeInsets.fromLTRB(
-                  widget.compact ? 14 : 18,
-                  widget.compact ? 6 : 8,
-                  widget.compact ? 6 : 8,
-                  widget.compact ? 6 : 8,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(LumiRadius.pill),
-                  color: reduceTransparency
-                      ? ext.glassSolidFallback
-                      : (isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.white.withValues(alpha: 0.34)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.30 : 0.12,
-                      ),
-                      blurRadius: _hovered ? 14 : 9,
-                      offset: Offset(0, _hovered ? 5 : 3),
-                      spreadRadius: -2,
-                    ),
-                  ],
-                ),
+            child: RepaintBoundary(
+              child: Opacity(
+                opacity: widget.onPressed == null ? 0.55 : 1.0,
                 child: CustomPaint(
-                  painter: LumiLiquidLensPainter(
+                  foregroundPainter: LumiLiquidLensPainter(
                     borderRadius: LumiRadius.pill,
                     isDark: isDark,
                     showOpticalSheen: !reduceTransparency,
@@ -212,50 +188,76 @@ class _LumiGlassLensButtonState extends State<LumiGlassLensButton> {
                     bottomRightColor: ext.glassBorderBottomRight,
                     innerHighlight: ext.glassInnerHighlight,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            widget.label,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(
-                                  color: ext.ink,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(
+                      widget.compact ? 14 : 18,
+                      widget.compact ? 6 : 8,
+                      widget.compact ? 6 : 8,
+                      widget.compact ? 6 : 8,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(LumiRadius.pill),
+                      color: reduceTransparency
+                          ? ext.glassSolidFallback
+                          : (isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.white.withValues(alpha: 0.40)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.24 : 0.10,
                           ),
-                        ),
-                        SizedBox(width: widget.compact ? 8 : 12),
-                        AnimatedScale(
-                          scale: _hovered && !reduceMotion ? 1.08 : 1.0,
-                          duration: reduceMotion
-                              ? Duration.zero
-                              : LumiMotion.fast,
-                          child: Container(
-                            width: widget.compact ? 30 : 34,
-                            height: widget.compact ? 30 : 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: badgeColor,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: badgeColor.withValues(alpha: 0.30),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              widget.icon,
-                              size: widget.compact ? 16 : 18,
-                              color: badgeIconColor,
-                            ),
-                          ),
+                          blurRadius: _hovered ? 12 : 8,
+                          offset: Offset(0, _hovered ? 4 : 3),
+                          spreadRadius: -2,
                         ),
                       ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.label,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: ext.ink,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                          SizedBox(width: widget.compact ? 8 : 12),
+                          AnimatedScale(
+                            scale: _hovered && !reduceMotion ? 1.08 : 1.0,
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : LumiMotion.fast,
+                            child: Container(
+                              width: widget.compact ? 30 : 34,
+                              height: widget.compact ? 30 : 34,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: badgeColor,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: badgeColor.withValues(alpha: 0.28),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                widget.icon,
+                                size: widget.compact ? 16 : 18,
+                                color: badgeIconColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -295,8 +297,18 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
       context,
       setting: scope?.reduceMotion ?? false,
     );
+    final isPill = widget.borderRadius >= 100;
     final radius = BorderRadius.circular(widget.borderRadius);
-    final shape = RoundedRectangleBorder(borderRadius: radius);
+    final OutlinedBorder shape = isPill
+        ? RoundedRectangleBorder(borderRadius: radius)
+        : RoundedSuperellipseBorder(borderRadius: radius);
+    final borderSide = BorderSide(
+      color: Colors.white.withValues(alpha: 0.52),
+      width: 1,
+    );
+    final OutlinedBorder foregroundShape = isPill
+        ? RoundedRectangleBorder(borderRadius: radius, side: borderSide)
+        : RoundedSuperellipseBorder(borderRadius: radius, side: borderSide);
 
     final innerContent = Stack(
       children: [
@@ -339,49 +351,45 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
       ],
     );
 
-    return RepaintBoundary(
-      child: GestureDetector(
-        onTapDown: widget.onTap == null
-            ? null
-            : (_) => setState(() => _pressed = true),
-        onTapUp: widget.onTap == null
-            ? null
-            : (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTap: widget.onTap == null
-            ? null
-            : () {
-                if (scope?.hapticsEnabled ?? true) {
-                  HapticFeedback.lightImpact();
-                }
-                widget.onTap?.call();
-              },
-        child: AnimatedScale(
-          scale: _pressed && !reduceMotion ? 0.97 : 1.0,
-          duration: reduceMotion ? Duration.zero : LumiMotion.fast,
-          curve: LumiMotion.spring,
+    final clippedContent = isPill
+        ? ClipRRect(borderRadius: radius, child: innerContent)
+        : ClipRSuperellipse(borderRadius: radius, child: innerContent);
+
+    return GestureDetector(
+      onTapDown: widget.onTap == null
+          ? null
+          : (_) => setState(() => _pressed = true),
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (scope?.hapticsEnabled ?? true) {
+                HapticFeedback.lightImpact();
+              }
+              widget.onTap?.call();
+            },
+      child: AnimatedScale(
+        scale: _pressed && !reduceMotion ? 0.97 : 1.0,
+        duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+        curve: LumiMotion.spring,
+        child: RepaintBoundary(
           child: Container(
             decoration: ShapeDecoration(
               shape: shape,
               shadows: [
                 BoxShadow(
-                  color: widget.accent.withValues(alpha: 0.32),
+                  color: widget.accent.withValues(alpha: 0.30),
                   blurRadius: 12,
                   offset: const Offset(0, 5),
                   spreadRadius: -3,
                 ),
               ],
             ),
-            foregroundDecoration: ShapeDecoration(
-              shape: RoundedRectangleBorder(
-                borderRadius: radius,
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.48),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: ClipRRect(borderRadius: radius, child: innerContent),
+            foregroundDecoration: ShapeDecoration(shape: foregroundShape),
+            child: clippedContent,
           ),
         ),
       ),
@@ -402,7 +410,7 @@ class LumiGlassIconButton extends StatelessWidget {
     this.tintColor,
     this.iconColor,
     this.badgeCount = 0,
-    this.useBlur = true,
+    this.useBlur = false,
     this.grouped = true,
     this.chrome = true,
   });
@@ -456,10 +464,13 @@ class LumiGlassIconButton extends StatelessWidget {
             width: size,
             height: size,
             borderRadius: LumiRadius.pill,
-            blur: 6,
+            blur: useBlur ? 5.5 : 0,
+            variant: LumiGlassVariant.clear,
             tintColor: tintColor,
+            elevated: true,
             useBlur: useBlur,
             grouped: grouped,
+            hasShadow: useBlur,
             onTap: onTap,
             semanticLabel: tooltip,
             alignment: Alignment.center,
@@ -589,26 +600,26 @@ class _LumiCaptureFabState extends State<LumiCaptureFab> {
       setting: scope?.reduceMotion ?? false,
     );
 
-    return RepaintBoundary(
-      child: Semantics(
-        label: widget.tooltip,
-        button: true,
-        child: Tooltip(
-          message: widget.tooltip,
-          child: GestureDetector(
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapUp: (_) => setState(() => _pressed = false),
-            onTapCancel: () => setState(() => _pressed = false),
-            onTap: () {
-              if (scope?.hapticsEnabled ?? true) {
-                HapticFeedback.mediumImpact();
-              }
-              widget.onTap();
-            },
-            child: AnimatedScale(
-              scale: _pressed && !reduceMotion ? 0.92 : 1.0,
-              duration: reduceMotion ? Duration.zero : LumiMotion.fast,
-              curve: LumiMotion.pop,
+    return Semantics(
+      label: widget.tooltip,
+      button: true,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTap: () {
+            if (scope?.hapticsEnabled ?? true) {
+              HapticFeedback.mediumImpact();
+            }
+            widget.onTap();
+          },
+          child: AnimatedScale(
+            scale: _pressed && !reduceMotion ? 0.92 : 1.0,
+            duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+            curve: LumiMotion.pop,
+            child: RepaintBoundary(
               child: Container(
                 width: widget.size,
                 height: widget.size,
@@ -616,9 +627,9 @@ class _LumiCaptureFabState extends State<LumiCaptureFab> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: ext.accentColor.withValues(alpha: 0.42),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
+                      color: ext.accentColor.withValues(alpha: 0.40),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                       spreadRadius: -2,
                     ),
                   ],
