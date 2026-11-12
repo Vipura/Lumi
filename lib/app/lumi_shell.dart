@@ -80,6 +80,8 @@ class LumiShell extends ConsumerWidget {
       settingsControllerProvider.select((s) => s.tourCompleted),
     );
 
+    final isolatedContent = RepaintBoundary(child: navigationShell);
+
     final mainContent = isWide
         ? Row(
             children: [
@@ -98,13 +100,23 @@ class LumiShell extends ConsumerWidget {
                   ),
                 ),
               ),
-              Expanded(child: navigationShell),
+              Expanded(child: isolatedContent),
             ],
           )
-        : navigationShell;
+        : Stack(
+            children: [
+              isolatedContent,
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: LumiScrollEdge(height: 86),
+              ),
+            ],
+          );
 
     return LumiBackground(
-      timeOfDayShift: currentIndex == 0,
+      timeOfDayShift: true,
       child: Stack(
         children: [
           Scaffold(
@@ -156,6 +168,22 @@ class _MobileFloatingGlassBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = context.lumiTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scope = LumiDesignScope.maybeOf(context);
+    final reduceMotion = LumiMotion.shouldReduceMotion(
+      context,
+      setting: scope?.reduceMotion ?? ext.reduceMotion,
+    );
+    final lensFill = Color.lerp(
+      ext.accentColor,
+      Colors.white,
+      isDark ? 0.14 : 0.30,
+    )!.withValues(alpha: isDark ? 0.22 : 0.30);
+    final lensBorder = Colors.white.withValues(alpha: isDark ? 0.28 : 0.78);
+    final safeIndex = currentIndex.clamp(0, _shellTabs.length - 1);
+    final alignX = -1.0 + (2.0 * safeIndex / (_shellTabs.length - 1));
+
     return Center(
       heightFactor: 1.0,
       child: ConstrainedBox(
@@ -165,25 +193,52 @@ class _MobileFloatingGlassBar extends StatelessWidget {
             Expanded(
               child: LumiGlass(
                 borderRadius: LumiRadius.pill,
-                blur: 8,
+                blur: 5.5,
                 elevated: true,
                 grouped: false,
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Row(
-                  children: _shellTabs
-                      .map(
-                        (tab) => Expanded(
-                          child: _TabItem(
-                            icon: tab.icon,
-                            activeIcon: tab.activeIcon,
-                            label: tab.label,
-                            compact: true,
-                            selected: currentIndex == tab.index,
-                            onTap: () => onSelect(tab.index),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: AnimatedAlign(
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : LumiMotion.fast,
+                        curve: LumiMotion.spring,
+                        alignment: Alignment(alignX, 0),
+                        child: FractionallySizedBox(
+                          widthFactor: 1.0 / _shellTabs.length,
+                          heightFactor: 1.0,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: lensFill,
+                              borderRadius: BorderRadius.circular(
+                                LumiRadius.pill,
+                              ),
+                              border: Border.all(color: lensBorder, width: 0.9),
+                            ),
                           ),
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ),
+                    Row(
+                      children: _shellTabs
+                          .map(
+                            (tab) => Expanded(
+                              child: _TabItem(
+                                icon: tab.icon,
+                                activeIcon: tab.activeIcon,
+                                label: tab.label,
+                                compact: true,
+                                drawSelectionChrome: false,
+                                selected: currentIndex == tab.index,
+                                onTap: () => onSelect(tab.index),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -212,7 +267,7 @@ class _DesktopGlassRail extends StatelessWidget {
     return LumiGlass(
       width: 96,
       borderRadius: LumiRadius.xl,
-      blur: 8,
+      blur: 5.5,
       elevated: true,
       grouped: false,
       padding: const EdgeInsets.symmetric(
@@ -253,6 +308,7 @@ class _TabItem extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.compact = false,
+    this.drawSelectionChrome = true,
   });
 
   final IconData icon;
@@ -261,26 +317,22 @@ class _TabItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final bool compact;
+  final bool drawSelectionChrome;
 
   @override
   Widget build(BuildContext context) {
     final ext = context.lumiTheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scope = LumiDesignScope.maybeOf(context);
-    final reduceMotion = LumiMotion.shouldReduceMotion(
-      context,
-      setting: scope?.reduceMotion ?? ext.reduceMotion,
-    );
     final color = selected ? ext.accentColor : ext.inkMuted;
-    final lensFill = selected
+    final lensFill = (drawSelectionChrome && selected)
         ? Color.lerp(
             ext.accentColor,
             Colors.white,
-            isDark ? 0.12 : 0.28,
-          )!.withValues(alpha: isDark ? 0.20 : 0.28)
+            isDark ? 0.14 : 0.30,
+          )!.withValues(alpha: isDark ? 0.22 : 0.30)
         : Colors.transparent;
-    final lensBorder = selected
-        ? Colors.white.withValues(alpha: isDark ? 0.26 : 0.72)
+    final lensBorder = (drawSelectionChrome && selected)
+        ? Colors.white.withValues(alpha: isDark ? 0.28 : 0.78)
         : Colors.transparent;
 
     return Semantics(
@@ -290,18 +342,20 @@ class _TabItem extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: reduceMotion ? Duration.zero : LumiMotion.fast,
-          curve: LumiMotion.spring,
+        child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: compact ? 4 : 10,
             vertical: compact ? 4 : 5,
           ),
-          decoration: BoxDecoration(
-            color: lensFill,
-            borderRadius: BorderRadius.circular(LumiRadius.pill),
-            border: selected ? Border.all(color: lensBorder, width: 0.9) : null,
-          ),
+          decoration: drawSelectionChrome
+              ? BoxDecoration(
+                  color: lensFill,
+                  borderRadius: BorderRadius.circular(LumiRadius.pill),
+                  border: selected
+                      ? Border.all(color: lensBorder, width: 0.9)
+                      : null,
+                )
+              : null,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Column(

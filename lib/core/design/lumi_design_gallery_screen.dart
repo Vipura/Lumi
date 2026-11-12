@@ -77,7 +77,12 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                     children: [
                       LumiLogo(size: 30),
                       SizedBox(width: LumiSpacing.sm),
-                      Text('Lumi Design Gallery'),
+                      Expanded(
+                        child: Text(
+                          'Lumi Design Gallery',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   actions: [
@@ -116,6 +121,10 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                               'Ambient Backgrounds & Accents',
                             ),
                             LumiGlass(
+                              useBlur: false,
+                              blur: 0,
+                              elevated: true,
+                              hasShadow: false,
                               padding: const EdgeInsets.all(LumiSpacing.md),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,6 +281,8 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                             ),
                             const SizedBox(height: LumiSpacing.sm),
                             LumiGlass(
+                              useBlur: false,
+                              blur: 0,
                               elevated: true,
                               tintColor: ext.accentColor,
                               padding: const EdgeInsets.all(LumiSpacing.md),
@@ -303,6 +314,55 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                               ),
                             ),
                             const SizedBox(height: LumiSpacing.sm),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: LumiGlass(
+                                    borderRadius: LumiRadius.lg,
+                                    variant: LumiGlassVariant.clear,
+                                    useBlur: false,
+                                    blur: 0,
+                                    elevated: true,
+                                    padding: const EdgeInsets.all(
+                                      LumiSpacing.md,
+                                    ),
+                                    child: Text(
+                                      'Clear Optical Glass (RSuperellipse squircle + Fresnel edge)',
+                                      style: Theme.of(scopedContext)
+                                          .textTheme
+                                          .bodySmall,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: LumiSpacing.sm),
+                                LumiGlassEffectContainer(
+                                  children: [
+                                    LumiGlassIconButton(
+                                      icon: Icons.share_outlined,
+                                      size: 36,
+                                      chrome: false,
+                                      tooltip: 'Share sample',
+                                      onTap: () {},
+                                    ),
+                                    LumiGlassIconButton(
+                                      icon: Icons.bookmark_border_rounded,
+                                      size: 36,
+                                      chrome: false,
+                                      tooltip: 'Bookmark sample',
+                                      onTap: () {},
+                                    ),
+                                    LumiGlassIconButton(
+                                      icon: Icons.more_horiz_rounded,
+                                      size: 36,
+                                      chrome: false,
+                                      tooltip: 'More sample',
+                                      onTap: () {},
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: LumiSpacing.sm),
                             LumiGlass.card(
                               child: Text(
                                 'Lightweight list card (LumiGlass.card) skips BackdropFilter so long lists stay crisp at 60/120 fps.',
@@ -331,11 +391,16 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                                             setState(() => _lensToggleA = v),
                                       ),
                                       const SizedBox(width: LumiSpacing.xs),
-                                      Text(
-                                        _lensToggleA ? 'Glass Active' : 'Muted',
-                                        style: Theme.of(scopedContext)
-                                            .textTheme
-                                            .bodyMedium,
+                                      Flexible(
+                                        child: Text(
+                                          _lensToggleA
+                                              ? 'Glass Active'
+                                              : 'Muted',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(scopedContext)
+                                              .textTheme
+                                              .bodyMedium,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -349,11 +414,14 @@ class _LumiDesignGalleryScreenState extends State<LumiDesignGalleryScreen> {
                                             setState(() => _lensToggleB = v),
                                       ),
                                       const SizedBox(width: LumiSpacing.xs),
-                                      Text(
-                                        'Optic Green',
-                                        style: Theme.of(scopedContext)
-                                            .textTheme
-                                            .bodyMedium,
+                                      Flexible(
+                                        child: Text(
+                                          'Optic Green',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(scopedContext)
+                                              .textTheme
+                                              .bodyMedium,
+                                        ),
                                       ),
                                     ],
                                   ),
