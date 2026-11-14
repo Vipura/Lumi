@@ -149,6 +149,47 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
 
+  build_ios:
+    name: Build iOS (Unsigned .ipa)
+    needs: [prepare, verify]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS release (unsigned)
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-name="${{ needs.prepare.outputs.numeric_version }}" \
+            --build-number="${{ needs.prepare.outputs.build_number }}"
+
+      - name: Package unsigned .ipa
+        shell: bash
+        run: |
+          VER="${{ needs.prepare.outputs.version }}"
+          mkdir -p dist/payload_staging/Payload
+          cp -R build/ios/iphoneos/Runner.app dist/payload_staging/Payload/
+          (cd dist/payload_staging && zip -r -9 "../../dist/Lumi-${VER}-ios-unsigned.ipa" Payload)
+          rm -rf dist/payload_staging
+          ls -lh dist
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-ios
+          path: dist/*.ipa
+          if-no-files-found: error
+
   build_linux:
     name: Build Ubuntu Linux (.tar.gz)
     needs: [prepare, verify]
@@ -355,7 +396,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [prepare, build_android, build_linux, build_macos, build_windows]
+    needs: [prepare, build_android, build_ios, build_linux, build_macos, build_windows]
     runs-on: ubuntu-latest
     steps:
       - name: Download all platform artifacts
@@ -389,9 +430,11 @@ jobs:
           body: |
             ## Lumi ${{ needs.prepare.outputs.tag }}
 
-            Offline-first **Liquid Glass** notes, checklists, reminders, attachments, sticky notes, and daily planning across Android, macOS, Windows, and Ubuntu/Linux.
+            Offline-first **Liquid Glass** notes, checklists, reminders, attachments, sticky notes, and daily planning across iOS, Android, macOS, Windows, and Ubuntu/Linux.
 
             ### Downloads
+            - **iOS (iPhone & iPad — Unsigned IPA)**:
+              - `Lumi-${{ needs.prepare.outputs.version }}-ios-unsigned.ipa` — Unsigned `.ipa` package for sideloading with AltStore, Sideloadly, TrollStore, or LiveContainer.
             - **Android**:
               - `Lumi-${{ needs.prepare.outputs.version }}-android-arm64-v8a.apk` — **recommended** smaller build for modern 64-bit phones.
               - `Lumi-${{ needs.prepare.outputs.version }}-android-universal.apk` — larger all-in-one build bundling `arm64-v8a`, `armeabi-v7a`, and `x86_64` ABIs for older/32-bit/unknown devices or universal sideloading.
