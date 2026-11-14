@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'lumi_buttons.dart';
 import 'lumi_glass.dart';
 import 'lumi_themes.dart';
 import 'lumi_tokens.dart';
@@ -77,15 +78,14 @@ class LumiGlassSearchField extends StatelessWidget {
               valueListenable: controller,
               builder: (context, value, _) {
                 if (value.text.isEmpty) return const SizedBox.shrink();
-                return IconButton(
-                  icon: Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: ext.inkMuted,
-                  ),
+                return LumiGlassIconButton(
+                  icon: Icons.close_rounded,
+                  iconColor: ext.inkMuted,
+                  size: 28,
+                  iconSize: 16,
+                  chrome: false,
                   tooltip: 'Clear search',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () {
+                  onTap: () {
                     controller.clear();
                     onChanged?.call('');
                   },

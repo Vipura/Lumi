@@ -9,13 +9,9 @@ import 'lumi_themes.dart';
 import 'lumi_tokens.dart';
 
 /// Returns `true` if the current platform supports GPU-accelerated
-/// BackdropFilter blur efficiently (iOS/Android via Impeller/Skia).
-/// Desktop renderers (macOS, Windows, Linux) and Web fall back to expensive
-/// CPU/multi-pass paths that cause frame drops, so we disable live blur there.
-bool get _platformSupportsBlur =>
-    !kIsWeb &&
-    (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android);
+/// BackdropFilter blur efficiently (iOS, Android, macOS, Windows, Linux).
+/// Web CanvasKit/HTML falls back to expensive DOM filters that cause frame drops.
+bool get _platformSupportsBlur => !kIsWeb;
 
 /// Apple platforms & Android render continuous superellipses natively/cleanly;
 /// Windows & Linux Skia paths use hardware fast-path `RRect` geometry to avoid
@@ -49,7 +45,7 @@ class LumiGlass extends StatefulWidget {
     super.key,
     required this.child,
     this.borderRadius = LumiRadius.md,
-    this.blur = 6.0,
+    this.blur = 20.0,
     this.variant = LumiGlassVariant.regular,
     this.tintColor,
     this.padding,
@@ -139,10 +135,10 @@ class _LumiGlassState extends State<LumiGlass> {
   bool get _interactive => widget.onTap != null || widget.onLongPress != null;
 
   static ImageFilter _resolveGlassFilter(double sigma) {
-    final step = (sigma * 2).round().clamp(1, 16);
+    final step = (sigma * 2).round().clamp(1, 64);
     final cached = _filterCache[step];
     if (cached != null) return cached;
-    if (_filterCache.length > 16) {
+    if (_filterCache.length > 64) {
       _filterCache.clear();
     }
     final clampedSigma = step / 2.0;
@@ -201,16 +197,15 @@ class _LumiGlassState extends State<LumiGlass> {
 
     final isPill = widget.borderRadius >= 100;
     final radius = BorderRadius.circular(widget.borderRadius);
-    // Skip BackdropFilter on desktop — it uses an unaccelerated CPU path on
-    // Windows/macOS/Linux that causes frame drops. iOS/Android use Impeller
-    // or Skia's GPU blur pass which is essentially free.
+    // Render GPU-accelerated BackdropFilter blur on native platforms (iOS,
+    // Android, macOS, Windows, Linux). Web CanvasKit/HTML skips live blur.
     final effectiveBlur =
         (!widget.useBlur ||
             reduceTransparency ||
             widget.blur <= 0 ||
             !_platformSupportsBlur)
         ? 0.0
-        : widget.blur.clamp(0.0, 8.0);
+        : widget.blur.clamp(0.0, 32.0);
 
     final baseTop = widget.elevated
         ? ext.glassElevatedFillTop
@@ -471,12 +466,12 @@ class LumiGlassEffectContainer extends StatelessWidget {
     required this.children,
     this.spacing = 2,
     this.showDividers = true,
-    this.useBlur = false,
-    this.blur = 6.0,
+    this.useBlur = true,
+    this.blur = 20.0,
     this.borderRadius = LumiRadius.pill,
     this.padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
     this.tintColor,
-    this.hasShadow = false,
+    this.hasShadow = true,
   });
 
   final List<Widget> children;

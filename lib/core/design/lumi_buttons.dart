@@ -1,3 +1,6 @@
+import 'dart:ui' show ImageFilter;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +20,7 @@ class LumiGlassButton extends StatelessWidget {
     this.isLoading = false,
     this.tintColor,
     this.borderRadius = LumiRadius.md,
+    this.padding,
   });
 
   final String label;
@@ -27,6 +31,7 @@ class LumiGlassButton extends StatelessWidget {
   final bool isLoading;
   final Color? tintColor;
   final double borderRadius;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
@@ -73,10 +78,12 @@ class LumiGlassButton extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 48),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: LumiSpacing.lg,
-                  vertical: LumiSpacing.sm,
-                ),
+                padding:
+                    padding ??
+                    const EdgeInsets.symmetric(
+                      horizontal: LumiSpacing.lg,
+                      vertical: LumiSpacing.sm,
+                    ),
                 child: Center(widthFactor: expanded ? null : 1, child: inner),
               ),
             ),
@@ -85,13 +92,16 @@ class LumiGlassButton extends StatelessWidget {
             onTap: enabled ? onPressed : null,
             tintColor: tintColor,
             borderRadius: borderRadius,
-            useBlur: false,
-            blur: 0,
+            useBlur: true,
+            blur: 20.0,
             elevated: true,
-            padding: const EdgeInsets.symmetric(
-              horizontal: LumiSpacing.lg,
-              vertical: LumiSpacing.sm,
-            ),
+            hasShadow: true,
+            padding:
+                padding ??
+                const EdgeInsets.symmetric(
+                  horizontal: LumiSpacing.md,
+                  vertical: LumiSpacing.xs,
+                ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 24),
               child: Center(widthFactor: expanded ? null : 1, child: inner),
@@ -319,9 +329,9 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color.lerp(widget.accent, Colors.white, 0.22)!,
+                  Color.lerp(widget.accent, Colors.white, 0.28)!,
                   widget.accent,
-                  Color.lerp(widget.accent, Colors.black, 0.08)!,
+                  Color.lerp(widget.accent, Colors.black, 0.10)!,
                 ],
               ),
             ),
@@ -339,7 +349,7 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.white.withValues(alpha: 0.28),
+                    Colors.white.withValues(alpha: 0.35),
                     Colors.white.withValues(alpha: 0.0),
                   ],
                 ),
@@ -351,9 +361,42 @@ class _PrimaryGlowButtonState extends State<_PrimaryGlowButton> {
       ],
     );
 
-    final clippedContent = isPill
-        ? ClipRRect(borderRadius: radius, child: innerContent)
-        : ClipRSuperellipse(borderRadius: radius, child: innerContent);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reduceTransparency =
+        scope?.reduceTransparency ?? context.lumiTheme.reduceTransparency;
+
+    final lensContent = CustomPaint(
+      foregroundPainter: LumiLiquidLensPainter(
+        borderRadius: widget.borderRadius,
+        isDark: isDark,
+        showOpticalSheen: !reduceTransparency,
+        topLeftColor: Colors.white.withValues(alpha: 0.85),
+        bottomRightColor: Colors.white.withValues(alpha: 0.50),
+        innerHighlight: Colors.white.withValues(alpha: 0.35),
+      ),
+      child: innerContent,
+    );
+
+    Widget clippedContent = isPill
+        ? ClipRRect(borderRadius: radius, child: lensContent)
+        : ClipRSuperellipse(borderRadius: radius, child: lensContent);
+
+    if (!reduceTransparency && !kIsWeb) {
+      final filter = ImageFilter.blur(
+        sigmaX: 16.0,
+        sigmaY: 16.0,
+        tileMode: TileMode.clamp,
+      );
+      clippedContent = isPill
+          ? ClipRRect(
+              borderRadius: radius,
+              child: BackdropFilter(filter: filter, child: clippedContent),
+            )
+          : ClipRSuperellipse(
+              borderRadius: radius,
+              child: BackdropFilter(filter: filter, child: clippedContent),
+            );
+    }
 
     return GestureDetector(
       onTapDown: widget.onTap == null
@@ -410,8 +453,8 @@ class LumiGlassIconButton extends StatelessWidget {
     this.tintColor,
     this.iconColor,
     this.badgeCount = 0,
-    this.useBlur = false,
-    this.grouped = true,
+    this.useBlur = true,
+    this.grouped = false,
     this.chrome = true,
   });
 
@@ -464,13 +507,13 @@ class LumiGlassIconButton extends StatelessWidget {
             width: size,
             height: size,
             borderRadius: LumiRadius.pill,
-            blur: useBlur ? 5.5 : 0,
+            blur: useBlur ? 20.0 : 0,
             variant: LumiGlassVariant.clear,
             tintColor: tintColor,
             elevated: true,
             useBlur: useBlur,
             grouped: grouped,
-            hasShadow: useBlur,
+            hasShadow: true,
             onTap: onTap,
             semanticLabel: tooltip,
             alignment: Alignment.center,
@@ -513,48 +556,77 @@ class _GroupedCapsuleIconButton extends StatefulWidget {
 
 class _GroupedCapsuleIconButtonState extends State<_GroupedCapsuleIconButton> {
   bool _pressed = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final scope = LumiDesignScope.maybeOf(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final reduceMotion = LumiMotion.shouldReduceMotion(
       context,
       setting: scope?.reduceMotion ?? false,
     );
     final activeTint = widget.tintColor;
 
-    Widget content = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap == null
-          ? null
-          : (_) => setState(() => _pressed = true),
-      onTapUp: widget.onTap == null
-          ? null
-          : (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onTap == null
-          ? null
-          : () {
-              if (scope?.hapticsEnabled ?? true) {
-                HapticFeedback.lightImpact();
-              }
-              widget.onTap?.call();
-            },
-      child: AnimatedScale(
-        scale: _pressed && !reduceMotion ? 0.90 : 1.0,
-        duration: reduceMotion ? Duration.zero : LumiMotion.fast,
-        curve: LumiMotion.spring,
-        child: Container(
-          width: widget.size,
-          height: widget.size,
-          alignment: Alignment.center,
-          decoration: activeTint != null
-              ? BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: activeTint.withValues(alpha: 0.16),
-                )
-              : null,
-          child: widget.child,
+    Color? backgroundColor;
+    BoxBorder? border;
+
+    if (activeTint != null) {
+      backgroundColor = activeTint.withValues(alpha: _pressed ? 0.32 : 0.20);
+      border = Border.all(
+        color: activeTint.withValues(alpha: 0.50),
+        width: 1.0,
+      );
+    } else if (_pressed) {
+      backgroundColor = Colors.white.withValues(alpha: isDark ? 0.24 : 0.38);
+      border = Border.all(
+        color: Colors.white.withValues(alpha: isDark ? 0.40 : 0.65),
+        width: 1.0,
+      );
+    } else if (_hovered) {
+      backgroundColor = Colors.white.withValues(alpha: isDark ? 0.14 : 0.22);
+      border = Border.all(
+        color: Colors.white.withValues(alpha: isDark ? 0.24 : 0.38),
+        width: 1.0,
+      );
+    }
+
+    Widget content = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: widget.onTap == null
+            ? null
+            : (_) => setState(() => _pressed = true),
+        onTapUp: widget.onTap == null
+            ? null
+            : (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap == null
+            ? null
+            : () {
+                if (scope?.hapticsEnabled ?? true) {
+                  HapticFeedback.lightImpact();
+                }
+                widget.onTap?.call();
+              },
+        child: AnimatedScale(
+          scale: _pressed && !reduceMotion ? 0.90 : 1.0,
+          duration: reduceMotion ? Duration.zero : LumiMotion.fast,
+          curve: LumiMotion.spring,
+          child: AnimatedContainer(
+            duration: LumiMotion.fast,
+            width: widget.size,
+            height: widget.size,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: backgroundColor,
+              border: border,
+            ),
+            child: widget.child,
+          ),
         ),
       ),
     );

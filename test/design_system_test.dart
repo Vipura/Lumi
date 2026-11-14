@@ -269,6 +269,51 @@ void main() {
   });
 
   testWidgets(
+    'LumiGlassButton renders primary and secondary with BackdropFilter blur',
+    (tester) async {
+      var primaryTapped = false;
+      var secondaryTapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LumiThemes.build(
+            brightness: Brightness.dark,
+            useGoogleFonts: false,
+          ),
+          home: Scaffold(
+            body: Column(
+              children: [
+                LumiGlassButton(
+                  label: 'Primary Button',
+                  primary: true,
+                  onPressed: () => primaryTapped = true,
+                ),
+                LumiGlassButton(
+                  label: 'Secondary Button',
+                  primary: false,
+                  onPressed: () => secondaryTapped = true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Primary Button'), findsOneWidget);
+      expect(find.text('Secondary Button'), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNWidgets(2));
+
+      await tester.tap(find.text('Primary Button'));
+      await tester.pumpAndSettle();
+      expect(primaryTapped, isTrue);
+
+      await tester.tap(find.text('Secondary Button'));
+      await tester.pumpAndSettle();
+      expect(secondaryTapped, isTrue);
+    },
+  );
+
+  testWidgets(
     'LumiGlassSegmentedControl slides indicator, fires onChanged, and updates labels',
     (tester) async {
       var selected = _TestTab.a;
@@ -370,7 +415,7 @@ void main() {
   );
 
   testWidgets(
-    'Desktop targets skip BackdropFilter blur and radial-orb mesh painting',
+    'Desktop targets optimize background mesh and support GPU-accelerated floating glass',
     (tester) async {
       for (final platform in const [
         TargetPlatform.macOS,
@@ -388,10 +433,15 @@ void main() {
             ),
             home: const LumiBackground(
               child: Scaffold(
-                body: LumiGlass(
-                  blur: 6.0,
-                  elevated: true,
-                  child: Text('Desktop Chrome'),
+                body: Column(
+                  children: [
+                    LumiGlass(
+                      blur: 20.0,
+                      elevated: true,
+                      child: Text('Desktop Chrome'),
+                    ),
+                    LumiGlass.card(child: Text('Desktop Card')),
+                  ],
                 ),
               ),
             ),
@@ -400,7 +450,8 @@ void main() {
         await tester.pump();
 
         expect(find.text('Desktop Chrome'), findsOneWidget);
-        expect(find.byType(BackdropFilter), findsNothing);
+        expect(find.text('Desktop Card'), findsOneWidget);
+        expect(find.byType(BackdropFilter), findsOneWidget);
       }
       debugDefaultTargetPlatformOverride = null;
     },
