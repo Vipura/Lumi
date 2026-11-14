@@ -191,7 +191,8 @@ class _ForegroundAlarmCoordinatorState
             ],
           ),
           actions: [
-            TextButton(
+            LumiGlassButton(
+              label: 'Snooze 15m',
               onPressed: () async {
                 Navigator.of(dialogCtx).pop();
                 final updated = await ref
@@ -203,7 +204,6 @@ class _ForegroundAlarmCoordinatorState
                       .scheduleForReminder(reminder: updated, title: title);
                 }
               },
-              child: const Text('Snooze 15m'),
             ),
             LumiGlassButton(
               label: 'Dismiss',

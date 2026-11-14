@@ -232,11 +232,12 @@ class _CalendarView extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left_rounded, size: 20),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                onPressed: () => onChangeMonth(-1),
+              LumiGlassIconButton(
+                icon: Icons.chevron_left_rounded,
+                size: 32,
+                iconSize: 20,
+                tooltip: 'Previous month',
+                onTap: () => onChangeMonth(-1),
               ),
               Expanded(
                 child: Text(
@@ -247,11 +248,12 @@ class _CalendarView extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right_rounded, size: 20),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                onPressed: () => onChangeMonth(1),
+              LumiGlassIconButton(
+                icon: Icons.chevron_right_rounded,
+                size: 32,
+                iconSize: 20,
+                tooltip: 'Next month',
+                onTap: () => onChangeMonth(1),
               ),
               const SizedBox(width: 4),
               LumiGlassChip(
@@ -535,11 +537,12 @@ class _BoardsView extends StatelessWidget {
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.add_rounded, size: 20),
-                              visualDensity: VisualDensity.compact,
+                            LumiGlassIconButton(
+                              icon: Icons.add_rounded,
+                              size: 32,
+                              iconSize: 18,
                               tooltip: 'Add plan to ${status.label}',
-                              onPressed: () => onAddCard(status),
+                              onTap: () => onAddCard(status),
                             ),
                           ],
                         ),
@@ -653,24 +656,28 @@ class _BoardCardTile extends StatelessWidget {
                 onSelected: (next) => onMove(item.id, next),
               ),
               const Spacer(),
-              if (status != LumiBoardStatus.todo)
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                  visualDensity: VisualDensity.compact,
+              if (status != LumiBoardStatus.todo) ...[
+                LumiGlassIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  size: 28,
+                  iconSize: 15,
                   tooltip: 'Move left',
-                  onPressed: () => onMove(
+                  onTap: () => onMove(
                     item.id,
                     status == LumiBoardStatus.done
                         ? LumiBoardStatus.doing
                         : LumiBoardStatus.todo,
                   ),
                 ),
+                const SizedBox(width: 4),
+              ],
               if (status != LumiBoardStatus.done)
-                IconButton(
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                  visualDensity: VisualDensity.compact,
+                LumiGlassIconButton(
+                  icon: Icons.arrow_forward_rounded,
+                  size: 28,
+                  iconSize: 15,
                   tooltip: 'Move right',
-                  onPressed: () => onMove(
+                  onTap: () => onMove(
                     item.id,
                     status == LumiBoardStatus.todo
                         ? LumiBoardStatus.doing
@@ -849,7 +856,8 @@ class _NewPlanDialogState extends State<_NewPlanDialog> {
                         ?.copyWith(color: ext.inkMuted),
                   ),
                 ),
-                TextButton(
+                LumiGlassButton(
+                  label: _chosenDue != null ? 'Change' : 'Set Date',
                   onPressed: () async {
                     final now = DateTime.now();
                     final picked = await showDatePicker(
@@ -870,23 +878,26 @@ class _NewPlanDialogState extends State<_NewPlanDialog> {
                       );
                     }
                   },
-                  child: Text(_chosenDue != null ? 'Change' : 'Set Date'),
                 ),
-                if (_chosenDue != null)
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 16),
+                if (_chosenDue != null) ...[
+                  const SizedBox(width: 4),
+                  LumiGlassIconButton(
+                    icon: Icons.close_rounded,
+                    size: 28,
+                    iconSize: 16,
                     tooltip: 'Clear date',
-                    onPressed: () => setState(() => _chosenDue = null),
+                    onTap: () => setState(() => _chosenDue = null),
                   ),
+                ],
               ],
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(
+        LumiGlassButton(
+          label: 'Cancel',
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
         ),
         LumiGlassButton(
           label: 'Create Plan',

@@ -56,20 +56,23 @@ class ArchiveScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.unarchive_rounded),
+                        LumiGlassIconButton(
+                          icon: Icons.unarchive_rounded,
+                          size: 34,
+                          iconSize: 18,
                           tooltip: 'Unarchive',
-                          onPressed: () => ref
+                          onTap: () => ref
                               .read(itemsRepositoryProvider)
                               .updateMetadata(id: item.id, archived: false),
                         ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline_rounded,
-                            color: LumiColors.danger,
-                          ),
+                        const SizedBox(width: 4),
+                        LumiGlassIconButton(
+                          icon: Icons.delete_outline_rounded,
+                          iconColor: LumiColors.danger,
+                          size: 34,
+                          iconSize: 18,
                           tooltip: 'Move to Trash',
-                          onPressed: () => ref
+                          onTap: () => ref
                               .read(itemsRepositoryProvider)
                               .softDelete(item.id),
                         ),
@@ -97,25 +100,26 @@ class TrashScreen extends ConsumerWidget {
           title: const Text('Trash'),
           actions: [
             if (items.isNotEmpty)
-              TextButton(
-                onPressed: () async {
-                  final ok = await showLumiConfirmDialog(
-                    context: context,
-                    title: 'Empty Trash?',
-                    message:
-                        'Permanently delete ${items.length} trashed item(s)? This cannot be undone.',
-                    confirmLabel: 'Delete All',
-                    destructive: true,
-                  );
-                  if (!ok) return;
-                  final repo = ref.read(itemsRepositoryProvider);
-                  for (final item in items) {
-                    await repo.permanentlyDelete(item.id);
-                  }
-                },
-                child: const Text(
-                  'Empty',
-                  style: TextStyle(color: LumiColors.danger),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: LumiGlassButton(
+                  label: 'Empty',
+                  tintColor: LumiColors.danger,
+                  onPressed: () async {
+                    final ok = await showLumiConfirmDialog(
+                      context: context,
+                      title: 'Empty Trash?',
+                      message:
+                          'Permanently delete ${items.length} trashed item(s)? This cannot be undone.',
+                      confirmLabel: 'Delete All',
+                      destructive: true,
+                    );
+                    if (!ok) return;
+                    final repo = ref.read(itemsRepositoryProvider);
+                    for (final item in items) {
+                      await repo.permanentlyDelete(item.id);
+                    }
+                  },
                 ),
               ),
           ],
@@ -161,20 +165,23 @@ class TrashScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.restore_from_trash_rounded),
+                        LumiGlassIconButton(
+                          icon: Icons.restore_from_trash_rounded,
+                          size: 34,
+                          iconSize: 18,
                           tooltip: 'Restore',
-                          onPressed: () => ref
+                          onTap: () => ref
                               .read(itemsRepositoryProvider)
                               .restore(item.id),
                         ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_forever_rounded,
-                            color: LumiColors.danger,
-                          ),
+                        const SizedBox(width: 4),
+                        LumiGlassIconButton(
+                          icon: Icons.delete_forever_rounded,
+                          iconColor: LumiColors.danger,
+                          size: 34,
+                          iconSize: 18,
                           tooltip: 'Delete forever',
-                          onPressed: () => ref
+                          onTap: () => ref
                               .read(itemsRepositoryProvider)
                               .permanentlyDelete(item.id),
                         ),

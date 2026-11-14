@@ -318,21 +318,13 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                             ),
                           ),
                           if (linkedNote)
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 34,
-                                minHeight: 34,
-                              ),
-                              icon: Icon(
-                                Icons.open_in_new_rounded,
-                                size: 18,
-                                color: ext.inkMuted,
-                              ),
+                            LumiGlassIconButton(
+                              size: 34,
+                              iconSize: 18,
+                              icon: Icons.open_in_new_rounded,
+                              iconColor: ext.inkMuted,
                               tooltip: 'Open linked item',
-                              onPressed: () =>
-                                  context.push('/editor/${parent.id}'),
+                              onTap: () => context.push('/editor/${parent.id}'),
                             ),
                           if (!isDone) ...[
                             PopupMenuButton<Duration>(
@@ -363,38 +355,23 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                                 ),
                               ],
                             ),
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 34,
-                                minHeight: 34,
-                              ),
-                              icon: const Icon(
-                                Icons.check_circle_outline_rounded,
-                                color: LumiColors.success,
-                                size: 21,
-                              ),
+                            LumiGlassIconButton(
+                              size: 34,
+                              iconSize: 20,
+                              icon: Icons.check_circle_outline_rounded,
+                              iconColor: LumiColors.success,
                               tooltip: 'Complete reminder',
-                              onPressed: () =>
+                              onTap: () =>
                                   unawaited(_completeReminder(r, parent)),
                             ),
                           ],
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 34,
-                              minHeight: 34,
-                            ),
-                            icon: Icon(
-                              Icons.delete_outline_rounded,
-                              size: 19,
-                              color: ext.inkMuted,
-                            ),
+                          LumiGlassIconButton(
+                            size: 34,
+                            iconSize: 19,
+                            icon: Icons.delete_outline_rounded,
+                            iconColor: ext.inkMuted,
                             tooltip: 'Delete reminder',
-                            onPressed: () =>
-                                unawaited(_deleteReminder(r, parent)),
+                            onTap: () => unawaited(_deleteReminder(r, parent)),
                           ),
                         ],
                       ),

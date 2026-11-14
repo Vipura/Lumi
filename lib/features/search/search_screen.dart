@@ -251,7 +251,6 @@ class _RecentSearchesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ext = context.lumiTheme;
     if (recents.isEmpty) {
       return const LumiEmptyState(
         icon: Icons.manage_search_rounded,
@@ -270,10 +269,7 @@ class _RecentSearchesView extends StatelessWidget {
               'Recent searches',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            TextButton(
-              onPressed: onClear,
-              child: Text('Clear', style: TextStyle(color: ext.inkMuted)),
-            ),
+            LumiGlassButton(label: 'Clear', onPressed: onClear),
           ],
         ),
         const SizedBox(height: LumiSpacing.xs),

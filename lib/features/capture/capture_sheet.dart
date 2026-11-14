@@ -255,13 +255,14 @@ class _CaptureSheetBodyState extends ConsumerState<_CaptureSheetBody> {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.arrow_upward_rounded,
-                    color: ext.accentColor,
-                  ),
+                LumiGlassIconButton(
+                  icon: Icons.arrow_upward_rounded,
+                  iconColor: Colors.white,
+                  tintColor: ext.accentColor,
+                  size: 36,
+                  iconSize: 20,
                   tooltip: 'Save quick note',
-                  onPressed: _submitQuickNote,
+                  onTap: _submitQuickNote,
                 ),
               ],
             ),

@@ -170,12 +170,9 @@ class _LumiTourOverlayState extends State<LumiTourOverlay> {
                                 ],
                               ),
                             ),
-                            TextButton(
+                            LumiGlassButton(
+                              label: 'Skip',
                               onPressed: widget.onFinish,
-                              child: Text(
-                                'Skip',
-                                style: TextStyle(color: ext.inkMuted),
-                              ),
                             ),
                           ],
                         ),
@@ -188,36 +185,44 @@ class _LumiTourOverlayState extends State<LumiTourOverlay> {
                         const SizedBox(height: LumiSpacing.md),
                         Row(
                           children: [
-                            Expanded(
-                              child: Row(
-                                children: List.generate(_tourSteps.length, (i) {
-                                  final active = i == _step;
-                                  return Container(
-                                    margin: const EdgeInsets.only(right: 5),
-                                    width: active ? 18 : 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                      color: active
-                                          ? ext.accentColor
-                                          : ext.inkMuted.withValues(alpha: 0.3),
-                                      borderRadius: BorderRadius.circular(
-                                        LumiRadius.pill,
-                                      ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(_tourSteps.length, (i) {
+                                final active = i == _step;
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 5),
+                                  width: active ? 18 : 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: active
+                                        ? ext.accentColor
+                                        : ext.inkMuted.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(
+                                      LumiRadius.pill,
                                     ),
-                                  );
-                                }),
-                              ),
+                                  ),
+                                );
+                              }),
                             ),
+                            const Spacer(),
                             if (_step > 0) ...[
-                              TextButton(
+                              LumiGlassButton(
+                                label: 'Back',
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: LumiSpacing.sm,
+                                  vertical: LumiSpacing.xs,
+                                ),
                                 onPressed: () => _goToStep(_step - 1),
-                                child: const Text('Back'),
                               ),
                               const SizedBox(width: LumiSpacing.xs),
                             ],
                             LumiGlassButton(
                               label: isLast ? 'Finish Tour' : 'Next',
                               primary: true,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: LumiSpacing.md,
+                                vertical: LumiSpacing.sm,
+                              ),
                               icon: isLast
                                   ? Icons.check_rounded
                                   : Icons.arrow_forward_rounded,

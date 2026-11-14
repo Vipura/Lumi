@@ -229,23 +229,22 @@ class _CalmSpaceScreenState extends ConsumerState<CalmSpaceScreen> {
                                     ],
                                   ),
                                 ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.picture_as_pdf_outlined,
-                                    color: ext.accentColor,
-                                    size: 20,
-                                  ),
+                                LumiGlassIconButton(
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  iconColor: ext.accentColor,
+                                  size: 34,
+                                  iconSize: 18,
                                   tooltip: 'Export PDF',
-                                  onPressed: () => unawaited(_exportPdf(item)),
+                                  onTap: () => unawaited(_exportPdf(item)),
                                 ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: ext.inkMuted,
-                                    size: 20,
-                                  ),
+                                const SizedBox(width: 4),
+                                LumiGlassIconButton(
+                                  icon: Icons.delete_outline_rounded,
+                                  iconColor: ext.inkMuted,
+                                  size: 34,
+                                  iconSize: 18,
                                   tooltip: 'Delete entry',
-                                  onPressed: () => ref
+                                  onTap: () => ref
                                       .read(itemsRepositoryProvider)
                                       .softDelete(item.id),
                                 ),

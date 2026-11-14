@@ -361,7 +361,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                             ),
                           ),
                           if (unfinishedDueCount > 0)
-                            TextButton(
+                            LumiGlassButton(
+                              label: 'Roll over',
                               onPressed: () async {
                                 final moved = await ref
                                     .read(checklistRepositoryProvider)
@@ -376,7 +377,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                                   );
                                 }
                               },
-                              child: const Text('Roll over'),
                             ),
                         ],
                       ),
@@ -446,9 +446,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                             count: calmEntries.length,
                           ),
                         ),
-                        TextButton(
+                        LumiGlassButton(
+                          label: 'Open Space',
                           onPressed: () => context.push('/calm'),
-                          child: const Text('Open Space'),
                         ),
                       ],
                     ),
@@ -554,9 +554,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                               count: todayReminders.length,
                             ),
                           ),
-                          TextButton(
+                          LumiGlassButton(
+                            label: 'All reminders',
                             onPressed: () => context.go('/reminders'),
-                            child: const Text('All reminders'),
                           ),
                         ],
                       ),
@@ -640,13 +640,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                                     ),
                                   ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.check_circle_outline_rounded,
-                                    color: LumiColors.success,
-                                  ),
+                                LumiGlassIconButton(
+                                  icon: Icons.check_circle_outline_rounded,
+                                  iconColor: LumiColors.success,
+                                  size: 36,
+                                  iconSize: 20,
                                   tooltip: 'Complete reminder',
-                                  onPressed: () => _completeReminder(r, parent),
+                                  onTap: () => _completeReminder(r, parent),
                                 ),
                               ],
                             ),

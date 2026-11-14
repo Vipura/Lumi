@@ -106,12 +106,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             ),
                           ],
                         ),
-                        TextButton(
+                        LumiGlassButton(
+                          label: 'Skip',
                           onPressed: _finishOnboarding,
-                          child: Text(
-                            'Skip',
-                            style: TextStyle(color: ext.inkMuted),
-                          ),
                         ),
                       ],
                     ),

@@ -139,10 +139,10 @@ class _ChecklistSectionState extends ConsumerState<ChecklistSection> {
                 ),
               ),
               if (hasUnfinished)
-                TextButton.icon(
+                LumiGlassButton(
                   onPressed: () => _moveUnfinishedToTomorrow(entries),
-                  icon: const Icon(Icons.redo_rounded, size: 16),
-                  label: const Text('Tomorrow'),
+                  icon: Icons.redo_rounded,
+                  label: 'Tomorrow',
                 ),
             ],
           ),
@@ -245,14 +245,14 @@ class _ChecklistSectionState extends ConsumerState<ChecklistSection> {
                   ),
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_upward_rounded,
-                  size: 18,
-                  color: ext.accentColor,
-                ),
+              LumiGlassIconButton(
+                icon: Icons.arrow_upward_rounded,
+                iconColor: Colors.white,
+                tintColor: ext.accentColor,
+                size: 32,
+                iconSize: 18,
                 tooltip: 'Add step',
-                onPressed: _addEntry,
+                onTap: _addEntry,
               ),
             ],
           ),
@@ -385,29 +385,34 @@ class _ChecklistRowState extends State<_ChecklistRow> {
             ),
           ),
           if (widget.isChild || widget.canIndent)
-            IconButton(
-              icon: Icon(
-                widget.isChild
-                    ? Icons.format_indent_decrease_rounded
-                    : Icons.format_indent_increase_rounded,
-                size: 16,
-                color: ext.inkMuted,
-              ),
-              visualDensity: VisualDensity.compact,
+            LumiGlassIconButton(
+              icon: widget.isChild
+                  ? Icons.format_indent_decrease_rounded
+                  : Icons.format_indent_increase_rounded,
+              size: 28,
+              iconSize: 16,
+              iconColor: ext.inkMuted,
+              chrome: false,
               tooltip: widget.isChild ? 'Outdent' : 'Nest under previous',
-              onPressed: widget.onToggleIndent,
+              onTap: widget.onToggleIndent,
             ),
-          IconButton(
-            icon: Icon(Icons.alarm_add_rounded, size: 16, color: ext.inkMuted),
-            visualDensity: VisualDensity.compact,
+          LumiGlassIconButton(
+            icon: Icons.alarm_add_rounded,
+            size: 28,
+            iconSize: 16,
+            iconColor: ext.inkMuted,
+            chrome: false,
             tooltip: 'Remind for this step',
-            onPressed: widget.onRemind,
+            onTap: widget.onRemind,
           ),
-          IconButton(
-            icon: Icon(Icons.close_rounded, size: 16, color: ext.inkMuted),
-            visualDensity: VisualDensity.compact,
+          LumiGlassIconButton(
+            icon: Icons.close_rounded,
+            size: 28,
+            iconSize: 16,
+            iconColor: ext.inkMuted,
+            chrome: false,
             tooltip: 'Remove item',
-            onPressed: widget.onDelete,
+            onTap: widget.onDelete,
           ),
           ReorderableDragStartListener(
             index: widget.index,

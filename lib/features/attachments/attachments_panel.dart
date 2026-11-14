@@ -251,6 +251,7 @@ class _ImageAttachmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = context.lumiTheme;
     return LumiGlass.card(
       padding: const EdgeInsets.all(LumiSpacing.xs),
       onTap: () {
@@ -271,9 +272,13 @@ class _ImageAttachmentCard extends StatelessWidget {
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white),
-                    onPressed: () => Navigator.of(ctx).pop(),
+                  child: LumiGlassIconButton(
+                    icon: Icons.close_rounded,
+                    iconColor: Colors.white,
+                    size: 36,
+                    iconSize: 20,
+                    tooltip: 'Close',
+                    onTap: () => Navigator.of(ctx).pop(),
                   ),
                 ),
               ],
@@ -313,9 +318,14 @@ class _ImageAttachmentCard extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            onPressed: onDelete,
+          LumiGlassIconButton(
+            icon: Icons.delete_outline_rounded,
+            iconColor: ext.inkMuted,
+            size: 32,
+            iconSize: 18,
+            chrome: false,
+            tooltip: 'Delete attachment',
+            onTap: onDelete,
           ),
         ],
       ),
@@ -440,20 +450,20 @@ class _AudioAttachmentCardState extends State<_AudioAttachmentCard> {
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: _togglePlay,
+          LumiGlassIconButton(
+            onTap: _togglePlay,
             tooltip: _supportsInlineAudio
                 ? (_playing ? 'Pause' : 'Play')
                 : 'Open in system audio player',
-            icon: Icon(
-              !_supportsInlineAudio
-                  ? Icons.open_in_new_rounded
-                  : _playing
-                  ? Icons.pause_circle_filled_rounded
-                  : Icons.play_circle_filled_rounded,
-              color: ext.accentColor,
-              size: _supportsInlineAudio ? 36 : 26,
-            ),
+            size: 42,
+            iconSize: _supportsInlineAudio ? 26 : 22,
+            icon: !_supportsInlineAudio
+                ? Icons.open_in_new_rounded
+                : _playing
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded,
+            iconColor: ext.accentColor,
+            tintColor: ext.accentColor,
           ),
           Expanded(
             child: Column(
@@ -479,9 +489,14 @@ class _AudioAttachmentCardState extends State<_AudioAttachmentCard> {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            onPressed: widget.onDelete,
+          LumiGlassIconButton(
+            icon: Icons.delete_outline_rounded,
+            iconColor: ext.inkMuted,
+            size: 32,
+            iconSize: 18,
+            chrome: false,
+            tooltip: 'Delete audio',
+            onTap: widget.onDelete,
           ),
         ],
       ),
@@ -557,9 +572,14 @@ class _LinkAttachmentCard extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            onPressed: onDelete,
+          LumiGlassIconButton(
+            icon: Icons.delete_outline_rounded,
+            iconColor: ext.inkMuted,
+            size: 32,
+            iconSize: 18,
+            chrome: false,
+            tooltip: 'Delete attachment',
+            onTap: onDelete,
           ),
         ],
       ),
@@ -580,6 +600,7 @@ class _FileAttachmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = context.lumiTheme;
     return LumiGlass.card(
       onTap: () async {
         if (kIsWeb) return;
@@ -647,9 +668,14 @@ class _FileAttachmentCard extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            onPressed: onDelete,
+          LumiGlassIconButton(
+            icon: Icons.delete_outline_rounded,
+            iconColor: ext.inkMuted,
+            size: 32,
+            iconSize: 18,
+            chrome: false,
+            tooltip: 'Delete attachment',
+            onTap: onDelete,
           ),
         ],
       ),
